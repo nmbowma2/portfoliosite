@@ -1,0 +1,29 @@
+---
+const { src, poster, caption = "" } = Astro.props;
+---
+<div class="relative min-h-[80svh] grid place-items-center overflow-hidden">
+  <video
+    class="absolute inset-0 h-full w-full object-cover"
+    src={src}
+    poster={poster}
+    muted
+    playsinline
+    loop
+    preload="metadata"
+    aria-label={caption}
+  ></video>
+
+  <div class="relative z-10 text-center px-6">
+    <p class="inline-block bg-black/40 backdrop-blur rounded-full px-4 py-2 text-sm">{caption}</p>
+  </div>
+
+  <script>
+    const video = document.currentScript.previousElementSibling.previousElementSibling;
+    const io = new IntersectionObserver(([entry]) => {
+      if (!video) return;
+      if (entry.isIntersecting) video.play().catch(() => {});
+      else video.pause();
+    }, { threshold: 0.35 });
+    io.observe(video);
+  </script>
+</div>

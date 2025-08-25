@@ -1,0 +1,23 @@
+---
+const { title = "portfoliov1", description = "projects" } = Astro.props;
+import "../styles/global.css";
+---
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+
+    <!-- Basic Open Graph -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+
+    <!-- Favicons: put files in /public and reference them -->
+    <link rel="icon" href="/favicon.ico" />
+  </head>
+  <body class="bg-neutral-950 text-neutral-100 antialiased selection:bg-neutral-200 selection:text-neutral-900">
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,19 @@
+---
+import { Image } from "astro:assets";
+import photos from "../data/photos"; // array of imports with alt text
+---
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+  {photos.map((p) => (
+    <figure class="group overflow-hidden rounded-lg">
+      <Image
+        src={p.src}
+        alt={p.alt}
+        width={p.width}
+        height={p.height}
+        loading="lazy"
+        class="w-full h-auto transition duration-300 group-hover:scale-[1.02]"
+      />
+      {p.caption && <figcaption class="sr-only">{p.caption}</figcaption>}
+    </figure>
+  ))}
+</div>
