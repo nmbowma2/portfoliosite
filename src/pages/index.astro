@@ -9,19 +9,20 @@ import img4 from "../assets/photos/font_4.png";
 import img5 from "../assets/photos/font_5.png";
 const sources = [img1, img2, img3, img4, img5];
 const seqConfig = [
-  { x:  0,  y:  -160, baseScale: 1.00 }, // image 1
-  { x:  0,  y:  -160, baseScale: 1 }, // image 2
-  { x:  0,  y:  -150, baseScale: 1 }, // image 3
-  { x:  0,  y:  -150, baseScale: 1 }, // image 4
-  { x:  0,  y:  -150, baseScale: 1 }, // image 5
+  { x:  0,  y:  0, baseScale: 1.00 }, // image 1
+  { x:  0,  y:  0, baseScale: 1 }, // image 2
+  { x:  0,  y:  0, baseScale: 1 }, // image 3
+  { x:  0,  y:  0, baseScale: 1 }, // image 4
+  { x:  0,  y:  0, baseScale: 1 }, // image 5
 ];
 ---
 <Base title="portfoliov1" description="projects">
   <!-- HERO -->
   <section class="relative h-[120vh] px-4 md:px-8 lg:px-12 py-12">
     <TopoDots />
-        <!-- Overlay the animation (transparent PNGs) on top of dots -->
-    <div class="absolute inset-0 z-10 pointer-events-none">
+
+    <!-- shift up by % of this full-height overlay -->
+    <div class="absolute inset-0 z-20 pointer-events-none translate-y-[20%] md:translate-y-[-14%]">
       <FiveImageSequencer
         sources={sources}
         fps={24}
@@ -30,6 +31,5 @@ const seqConfig = [
       />
     </div>
   </section>
-
 
 </Base>
