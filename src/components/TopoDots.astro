@@ -1,194 +1,235 @@
 ---
-/* TopoDots — greyscale valley with safe blur + visibility toggles */
+/* TopoDots — transparent canvas with smooth feathered valley */
 ---
 <style>
-  .topo-wrap {
-    position: relative;
-    width: 100%;
-    height: min(80vh, 900px); /* ensure height > 0 or you won't see anything */
-    overflow: hidden;
-    border-radius: 12px;
-    background: #0a0a0a; /* bg must contrast with dots */
+  .topo-wrap{
+    position:relative; width:100%; height:min(80vh,900px);
+    overflow:hidden; background:transparent; border-radius:12px;
   }
-  
-  canvas { display:block; width:100%; height:100%; }
-  .hint {
-    position:absolute; inset:auto 10px 10px auto;
-    font:12px/1.3 system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif;
-    color:#bbb; opacity:.8; user-select:none; pointer-events:none;
-    background:rgba(0,0,0,.35); padding:.3rem .5rem; border-radius:.5rem; backdrop-filter: blur(6px);
+  canvas#topo{
+    position:absolute; inset:0; width:100%; height:100%;
+    display:block; background:transparent;
   }
 </style>
 
-<div class="topo-wrap">
+<div class="topo-wrap" aria-hidden="true">
   <canvas id="topo"></canvas>
-  <div class="hint"></div>
 </div>
 
 <script>
-// @ts-nocheck  // keep JS strictness from blocking during debugging
+// @ts-nocheck
 
-// ---- CONFIG (edit these) ----
+// ---------- CONFIG (edit these) ----------
 const CONFIG = {
-  spacing: 18,        // px between dots (smaller = denser)
-  baseRadius: 2.6,    // 🔁 bigger while debugging so dots are obvious
-  amp: 10,            // displacement near cursor
-  sigma: 160,         // influence radius
-  ridge: false,       // false = pull inward (valley)
-  bandStrength: 0.25, // contour contrast; set 0 for flat greys
-  bandPeriod: 18,     // distance between contour rings
-  grayBase: 235,      // dot grey far from cursor (0-255)
-  grayDepth: 60,      // darker near center (0-255); 0 = no shading
-  bg: "#0a0a0a",
-  blur: 0,            // Gaussian blur in px (0..6). Set 0 while debugging
-  // DEBUG toggles:
-  debugBigDots: false, // true => very large dots to confirm rendering
-  debugLog: true,       // logs support info once
-  // --- Chroma offsets (RGB separation) ---
-chroma: {
-  enabled: true,          // master toggle
-  mode: "lighter",        // "lighter" blends channels on dark bg
-  alphaScale: 0.85,       // per-channel opacity (0..1)
-  // offsets in CSS px (we’ll scale by DPR internally)
-  r: { x:  -1.5, y:  0 },  // red:   right
-  g: { x: 1.5, y:  1.0 },// green: left + down
-  b: { x: 1.5, y:  0 },  // blue:  left
-},
+  // visual
+  spacing: 21,          // base spacing in CSS px (auto-raised if too many dots)
+  baseRadius: 2.8,      // dot radius in CSS px (before proximity shaping)
+  amp: 10,              // displacement near cursor (CSS px)
+  sigma: 100,           // influence radius (CSS px)
+  grayBase: 235,        // dot grey far from cursor (0..255)
+  grayDepth: 60,        // extra darkening toward center (0..255)
 
+  // NEW: smooth feathering outside the local radius (multiple of sigma)
+  localRadiusMult: 0.6,     // center influence radius
+  edgeFeatherMult: 0.9,     // feather width = this * sigma (set 0.5..1.5)
+
+  // chromatic aberration (per-channel tiny offsets)
+  chroma: {
+    enabled: true,
+    mode: "lighter",    // "lighter" for additive on dark bg, else "source-over"
+    alphaScale: 0.65,   // per-channel alpha multiplier (0..1)
+    r: { x:  1.2, y: 0 },
+    g: { x: -2.5, y: 1.0 },
+    b: { x: -1.5, y: 0 },
+  },
+
+  // performance
+  maxDots: 9500,        // hard cap; spacing auto-adjusts to stay under this
+  dprCap: 1.8,          // cap devicePixelRatio to avoid overdraw
+  targetFPS: 60,        // render cadence; 60 or 30
 };
+// -----------------------------------------
 
-// Grab canvas and context
 const el = document.getElementById("topo");
-if (!(el instanceof HTMLCanvasElement)) {
-  console.warn("[TopoDots] #topo not found or not a <canvas>");
-} else {
+if (!(el instanceof HTMLCanvasElement)) { console.warn("[TopoDots] canvas missing"); }
+else {
   const canvas = el;
-  const ctx = canvas.getContext("2d", { alpha: false });
-  if (!ctx) {
-    console.warn("[TopoDots] 2D context unavailable");
-  } else {
-    const supportsCtxFilter = ('filter' in ctx);
-    if (CONFIG.debugLog) console.log("[TopoDots] ctx.filter supported:", supportsCtxFilter);
+  const ctx = canvas.getContext("2d", { alpha:true });
+  if (!ctx) { console.warn("[TopoDots] 2D context unavailable"); }
+  else {
+    ctx.imageSmoothingEnabled = false; // crisper tiny squares
 
-    let dpr = Math.max(1, window.devicePixelRatio || 1);
-    let W = 0, H = 0, cols = 0, rows = 0;
-    /** @type {{x:number,y:number}[]} */
-    let points = [];
-    const state = { tx:0, ty:0, px:0, py:0, hasMouse:false };
+    // Accessibility / progressive reduction
+    const prefersReduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+    if (prefersReduced) {
+      CONFIG.amp = Math.min(CONFIG.amp, 6);
+      CONFIG.chroma.enabled = false;
+    }
 
-    function resize(){
+    // State (keep allocations outside frame loop)
+    let dpr = 1, W = 0, H = 0, spacingDevice = 0;
+    let points = /** @type {{x:number,y:number}[]} */ ([]);
+    const state = { tx:0, ty:0, px:0, py:0 }; // smoothed pointer
+
+    // Pointer (no allocations inside handler)
+    function setTargetFromEvent(e){
+      // offsetX/Y are already in CSS px relative to canvas box
+      state.tx = e.offsetX * dpr;
+      state.ty = e.offsetY * dpr;
+    }
+    canvas.addEventListener("pointermove", setTargetFromEvent, { passive:true });
+    canvas.addEventListener("pointerdown",  setTargetFromEvent, { passive:true });
+    canvas.addEventListener("pointerleave", () => { /* keep last target; no animation stall */ }, { passive:true });
+
+    // Resize with auto density control
+    function rebuildGrid(){
       const rect = canvas.getBoundingClientRect();
+      dpr = Math.min(CONFIG.dprCap, Math.max(1, window.devicePixelRatio || 1));
       W = Math.max(1, Math.floor(rect.width  * dpr));
       H = Math.max(1, Math.floor(rect.height * dpr));
       canvas.width  = W;
       canvas.height = H;
 
-      const spacing = CONFIG.spacing * dpr;
-      cols = Math.ceil(W / spacing) + 2;
-      rows = Math.ceil(H / spacing) + 2;
+      // start with requested spacing; raise if dot count exceeds cap
+      spacingDevice = Math.max(4 * dpr, CONFIG.spacing * dpr);
+      let cols = Math.ceil(W / spacingDevice) + 2;
+      let rows = Math.ceil(H / spacingDevice) + 2;
+      let est = cols * rows;
 
-      points = [];
-      for (let y=-1; y<=rows-2; y++){
-        for (let x=-1; x<=cols-2; x++){
-          points.push({ x: x*spacing + spacing*0.5, y: y*spacing + spacing*0.5 });
+      if (est > CONFIG.maxDots) {
+        const scale = Math.sqrt(est / CONFIG.maxDots);
+        spacingDevice *= scale;
+        cols = Math.ceil(W / spacingDevice) + 2;
+        rows = Math.ceil(H / spacingDevice) + 2;
+      }
+
+      points.length = 0;
+      const step = spacingDevice, half = step * 0.5;
+      for (let y = -1; y <= Math.ceil(H/step); y++){
+        const gy = y * step + half;
+        for (let x = -1; x <= Math.ceil(W/step); x++){
+          points.push({ x: x * step + half, y: gy });
         }
       }
     }
 
-    function setTarget(x, y){
-      state.tx = x * dpr;
-      state.ty = y * dpr;
-      state.hasMouse = true;
+    // Helpers
+    function smoothstep(edge0, edge1, x){
+      const t = Math.max(0, Math.min(1, (x - edge0) / Math.max(1e-6, edge1 - edge0)));
+      return t * t * (3 - 2 * t);
     }
 
-    canvas.addEventListener("pointermove", (e) => setTarget(e.offsetX, e.offsetY));
-    canvas.addEventListener("pointerdown",  (e) => setTarget(e.offsetX, e.offsetY));
-    canvas.addEventListener("pointerleave", () => (state.hasMouse = false));
+    // Animation loop (time-based)
+    const frameInterval = 1000 / Math.max(1, CONFIG.targetFPS|0);
+    let last = performance.now();
 
-    function lerp(a,b,t){ return a + (b-a)*t; }
+    function draw(now){
+      const dt = now - last;
+      if (dt < frameInterval) { requestAnimationFrame(draw); return; }
+      last = now;
 
-    function draw(){
-      // Smooth pointer
-      const ease = 0.15;
-      state.px = lerp(state.px, state.tx, ease);
-      state.py = lerp(state.py, state.ty, ease);
+      // pointer ease (time-based to keep feel consistent)
+      const ease = 0.18 * (dt / 16.67); // ~0.18 @60fps
+      state.px += (state.tx - state.px) * ease;
+      state.py += (state.ty - state.py) * ease;
 
+      // transparent clear (no background paint)
+      ctx.globalCompositeOperation = "source-over";
+      ctx.clearRect(0, 0, W, H);
 
-      // Clear
-      ctx.fillStyle = CONFIG.bg;
-      ctx.fillRect(0, 0, W, H);
+      const baseR = CONFIG.baseRadius * dpr;
 
-      // Enable additive-like blending for color channels
-      ctx.globalCompositeOperation = (CONFIG.chroma?.enabled && CONFIG.chroma.mode === "lighter")
-        ? "lighter"
-        : "source-over";
+      // local influence + feather (device px)
+      const sigmaDevice   = CONFIG.sigma * dpr;
+      const localR        = (CONFIG.localRadiusMult ?? 2.6) * sigmaDevice;
+      const featherWidth  = Math.max(2, (CONFIG.edgeFeatherMult ?? 0.9) * sigmaDevice);
 
-      // Safe blur application
-      const blurPx = Math.max(0, Math.min(6, Number(CONFIG.blur) || 0));
-      if (supportsCtxFilter) {
-        ctx.filter = blurPx > 0 ? `blur(${blurPx}px)` : "none";
-        // ensure CSS filter is off if we previously used it
-        canvas.style.filter = "none";
-      } else {
-        // CSS fallback (affects whole canvas)
-        canvas.style.filter = blurPx > 0 ? `blur(${blurPx}px)` : "none";
-      }
+      // Gaussian falloff (device px)
+      const invSigma2Device = 1 / (2 * sigmaDevice * sigmaDevice);
 
-      // Precompute
-      const baseR = (CONFIG.debugBigDots ? 5.5 : CONFIG.baseRadius) * dpr; // big dots in debug mode
-      const invSigma2 = 1 / (2 * CONFIG.sigma * CONFIG.sigma);
-      const sign = CONFIG.ridge ? 1 : -1; // ridge=false -> -1 (pull inward)
+      // chroma setup
+      const useChroma = !!(CONFIG.chroma && CONFIG.chroma.enabled);
+      const alphaScale = Math.max(0, Math.min(1, CONFIG.chroma?.alphaScale ?? 0.65));
+      const rOffX = ((CONFIG.chroma?.r?.x) ?? 0) * dpr;
+      const rOffY = ((CONFIG.chroma?.r?.y) ?? 0) * dpr;
+      const gOffX = ((CONFIG.chroma?.g?.x) ?? 0) * dpr;
+      const gOffY = ((CONFIG.chroma?.g?.y) ?? 0) * dpr;
+      const bOffX = ((CONFIG.chroma?.b?.x) ?? 0) * dpr;
+      const bOffY = ((CONFIG.chroma?.b?.y) ?? 0) * dpr;
+      const additive = useChroma && CONFIG.chroma.mode === "lighter";
 
-      for (let i=0, n=points.length; i<n; i++){
+      for (let i = 0, n = points.length; i < n; i++) {
         const p = points[i];
         const dx = p.x - state.px;
         const dy = p.y - state.py;
         const d2 = dx*dx + dy*dy;
 
-        const g = Math.exp(-d2 * invSigma2);         // 0..1
-        const disp = CONFIG.amp * dpr * g;
-        const invLen = 1 / Math.sqrt(d2 + 1e-6);
-        const ux = dx * invLen, uy = dy * invLen;
+        // distance & weights
+        const dist = Math.sqrt(d2);
+        const g = Math.exp(-d2 * invSigma2Device); // Gaussian peak at center
+        // feathered clamp: 1 inside localR, smoothly → 0 across feather band
+        const clamp = 1 - smoothstep(localR, localR + featherWidth, dist);
+        const eff = g * clamp; // effective influence (0..1)
 
-        const x = p.x + sign * ux * disp;
-        const y = p.y + sign * uy * disp;
+        // base position
+        let x = p.x, y = p.y;
 
-        // shrink near center (valley look)
-        const r = Math.max(baseR * 0.35, baseR * (1 - 0.7 * g));
+        // displacement inward (scaled by eff)
+        if (eff > 0.0001) {
+          const invLen = 1 / Math.sqrt(d2 + 1e-6);
+          const ux = dx * invLen, uy = dy * invLen;
+          const disp = CONFIG.amp * dpr * eff;
+          x = p.x - ux * disp;
+          y = p.y - uy * disp;
+        }
 
-        // greyscale with optional contour banding
-        const band = 0.5 + 0.5 * Math.cos((Math.sqrt(d2) / (CONFIG.bandPeriod * dpr)) * 2*Math.PI);
-        const bandMix = CONFIG.bandStrength * band;
-        const grayNear = CONFIG.grayBase - CONFIG.grayDepth * g; // darker near center
-        const gray = Math.round(lerp(grayNear, CONFIG.grayBase, 0.45 + bandMix));
-        const clamped = Math.max(0, Math.min(255, gray));
-        ctx.fillStyle = `rgb(${clamped},${clamped},${clamped})`;
+        // radius & grayscale blended by eff
+        const r = Math.max(baseR * 0.35, baseR * (1 - 0.7 * eff));
+        let gray = CONFIG.grayBase - CONFIG.grayDepth * eff;
+        if (gray < 0) gray = 0; else if (gray > 255) gray = 255;
 
-        const s = r*2;
-        ctx.fillRect(x - r, y - r, s, s);
+        // quantize to device pixels for crisp squares
+        const qx = Math.round(x);
+        const qy = Math.round(y);
+        const s = r + r;
+
+        if (useChroma && eff > 0.0001) {
+          const alpha = (gray / 255) * alphaScale;
+
+          if (additive) ctx.globalCompositeOperation = "lighter";
+          // R
+          ctx.fillStyle = `rgba(255,0,0,${alpha})`;
+          ctx.fillRect(qx + rOffX - r, qy + rOffY - r, s, s);
+          // G
+          ctx.fillStyle = `rgba(0,255,0,${alpha})`;
+          ctx.fillRect(qx + gOffX - r, qy + gOffY - r, s, s);
+          // B
+          ctx.fillStyle = `rgba(0,0,255,${alpha})`;
+          ctx.fillRect(qx + bOffX - r, qy + bOffY - r, s, s);
+          if (additive) ctx.globalCompositeOperation = "source-over";
+        } else {
+          const g255 = gray | 0;
+          ctx.fillStyle = `rgb(${g255},${g255},${g255})`;
+          ctx.fillRect(qx - r, qy - r, s, s);
+        }
       }
 
-      if (supportsCtxFilter) ctx.filter = "none"; // don’t leak to next frame
-
+      // restore default blend for anything drawn later
+      ctx.globalCompositeOperation = "source-over";
       requestAnimationFrame(draw);
     }
 
-    // Observe size
-    const parent = canvas.parentElement;
-    if (parent) {
-      const ro = new ResizeObserver(() => resize());
-      ro.observe(parent);
-    }
+    // init & observers
+    const ro = new ResizeObserver(rebuildGrid);
+    ro.observe(canvas.parentElement ?? canvas);
+    rebuildGrid();
 
-    // Init
-    resize();
-    state.tx = (W/dpr)/2; state.ty = (H/dpr)/2;
-    state.px = state.tx*dpr; state.py = state.ty*dpr;
+    // seed pointer to center so it animates even before input
+    state.tx = (W / dpr) * 0.5 * dpr;
+    state.ty = (H / dpr) * 0.5 * dpr;
+    state.px = state.tx; state.py = state.ty;
+
     requestAnimationFrame(draw);
-
-    // Re-check DPR on change (optional)
-    const mm = window.matchMedia?.(`(resolution: ${dpr}dppx)`);
-    mm?.addEventListener?.("change", () => { dpr = Math.max(1, window.devicePixelRatio || 1); resize(); });
   }
 }
 </script>
