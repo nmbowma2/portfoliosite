@@ -1,0 +1,149 @@
+---
+/**
+ * FiveImageSequencer.astro
+ * Plays 5 transparent PNGs in sequence, 40 frames each, at configurable FPS.
+ * - sources: array of 5 images (strings or imported assets)
+ * - fps: number, default 24
+ * - config: [{x,y,baseScale}, ...] one per image
+ */
+const {
+  sources = [],
+  fps = 24,
+  config = [
+    { x: 0,   y: 0,   baseScale: 1 },
+    { x: 0,   y: 0,   baseScale: 1 },
+    { x: 0,   y: 0,   baseScale: 1 },
+    { x: 0,   y: 0,   baseScale: 1 },
+    { x: 0,   y: 0,   baseScale: 1 },
+  ],
+  class: className = ""
+} = Astro.props;
+
+if (!Array.isArray(sources) || sources.length < 5) {
+  console.warn("[FiveImageSequencer] expected 5 images, got", sources);
+}
+
+// Convert Astro ImageMetadata or string into plain URL
+const urls = sources.map((s: string | { src: string }) =>
+  typeof s === "string" ? s : s.src
+);
+---
+
+<style>
+  .seq5-wrap { position: relative; width: 100%; height: 100%; }
+  canvas.seq5 { display: block; width: 100%; height: 100%; }
+</style>
+
+<div class={`seq5-wrap ${className}`}>
+  <canvas id="seq5" class="seq5" aria-hidden="true"></canvas>
+</div>
+
+<script define:vars={{ urls, fps, config }}>
+// @ts-nocheck
+
+const RATE_UP   = .25;
+const RATE_DOWN = .125;
+
+const FRAMES_PER_IMAGE = 60;
+const SLOT0 = { HOLD_START: 0,  HOLD_END: 40 };
+const SLOT1 = { UP_START: 40,   UP_END: 52 };
+const SLOT2 = { DOWN_START: 52, DOWN_END: 60 };
+
+const URLS = urls;
+const FPS  = fps;
+const CFG  = config;
+
+const canvas = document.getElementById("seq5");
+const ctx = canvas.getContext("2d");
+let dpr = Math.max(1, window.devicePixelRatio || 1);
+let W = 0, H = 0;
+
+let images = [];
+let natural = [];
+let loaded = 0;
+
+function preload() {
+  images = URLS.map((src, i) => {
+    const img = new Image();
+    img.src = src;
+    img.onload = () => {
+      natural[i] = { w: img.naturalWidth, h: img.naturalHeight };
+      if (++loaded === URLS.length) {
+        resize();
+        start();
+      }
+    };
+    img.decode?.().catch(()=>{});
+    return img;
+  });
+}
+
+function resize() {
+  const r = canvas.getBoundingClientRect();
+  dpr = Math.max(1, window.devicePixelRatio || 1);
+  W = Math.max(1, Math.floor(r.width  * dpr));
+  H = Math.max(1, Math.floor(r.height * dpr));
+  canvas.width  = W;
+  canvas.height = H;
+}
+
+const frameDurMs = 1000 / FPS;
+
+function scaleFactorAtLocalFrame(f) {
+  if (f < SLOT1.UP_START) return 1.0;
+  if (f < SLOT1.UP_END)   return 1.0 + RATE_UP * ((f - SLOT1.UP_START) / FPS);
+  if (f < SLOT2.DOWN_END) {
+    const gainedAt33 = 1.0 + RATE_UP * ((SLOT1.UP_END - SLOT1.UP_START) / FPS);
+    return gainedAt33 - RATE_DOWN * ((f - SLOT2.DOWN_START) / FPS);
+  }
+  return 1.0;
+}
+
+let raf = 0;
+let startTime = 0;
+
+function draw(now) {
+  raf = requestAnimationFrame(draw);
+  if (!startTime) startTime = now;
+
+  const elapsedMs   = now - startTime;
+  const globalFrame = Math.floor(elapsedMs / frameDurMs);
+
+  const imageIndex  = Math.floor(globalFrame / FRAMES_PER_IMAGE) % 5;
+  const localFrame  = globalFrame % FRAMES_PER_IMAGE;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const img = images[imageIndex];
+  if (!img || !img.complete) return;
+
+  const { w: iw, h: ih } = natural[imageIndex] || { w: img.naturalWidth, h: img.naturalHeight };
+  const { x, y, baseScale } = CFG[imageIndex] || { x:0, y:0, baseScale:1 };
+
+  const f = Math.max(0, Math.min(FRAMES_PER_IMAGE - 1, localFrame));
+  const factor = scaleFactorAtLocalFrame(f);
+  const scale = Math.max(0.01, baseScale * factor);
+
+  const cx = W * 0.5;
+  const cy = H * 0.5;
+
+  const dw = iw * scale * dpr;
+  const dh = ih * scale * dpr;
+  const dx = cx + (x * dpr) - (dw * 0.5);
+  const dy = cy + (y * dpr) - (dh * 0.5);
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, 0, 0, iw, ih, dx, dy, dw, dh);
+}
+
+function start() {
+  cancelAnimationFrame(raf);
+  startTime = performance.now();
+  raf = requestAnimationFrame(draw);
+}
+
+window.addEventListener("resize", resize, { passive:true });
+resize();
+preload();
+</script>
