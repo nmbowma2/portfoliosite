@@ -2,139 +2,108 @@
 import defaultArrow from "../assets/photos/arrow_white.png";
 
 export interface Props {
-  src?: string | { src: string };
-  amp?: number;            // bounce amplitude in px
-  periodMs?: number;       // ms per up/down cycle
-  dprCap?: number;         // DPR cap for perf
-  baseScale?: number;      // image scale (1 = natural)
-  z?: number;              // z-index of overlay
-  bottom?: number;         // bottom offset in px
-  height?: number;         // container height in px
-  observeSelector?: string; // element to watch for visibility (defaults to .topo-wrap)
-  hideThreshold?: number;   // 0..1 intersection ratio where arrow is fully shown
+  src?: string | { src: string; width?: number; height?: number };
+  amp?: string;        // e.g. "8px"
+  period?: string;     // e.g. "1.6s"
+  scale?: number;      // e.g. 1.35
+  bottom?: string;     // e.g. "32px"
+  z?: number;          // e.g. 60
+  width?: string;      // e.g. "64px"
+
+  /** Hide after scrolling this many px (0 or undefined = never hide) */
+  hideAtPx?: number;   // e.g. 500
+  /** Width of the fade band around hideAtPx (in px) */
+  fadeSpanPx?: number; // e.g. 160
+  class?: string;
+  ariaLabel?: string;
 }
 
 const {
   src = defaultArrow,
-  amp = 12,
-  periodMs = 1400,
-  dprCap = 2.0,
-  baseScale = 0.7,
-  z = 30,
-  bottom = 24,
-  height = 80,
-  observeSelector = ".topo-wrap",
-  hideThreshold = 0.5,
+  amp = "8px",
+  period = "1.6s",
+  scale = 1,
+  bottom = "24px",
+  z = 50,
+  width = "48px",
+  hideAtPx = 0,
+  fadeSpanPx = 160,
+  class: className = "",
+  ariaLabel = "Scroll down",
 } = Astro.props;
 
 const url = typeof src === "string" ? src : src.src;
+const iW  = typeof src === "string" ? undefined : src.width;
+const iH  = typeof src === "string" ? undefined : src.height;
 ---
 
 <style>
-  /* Replicate TopoDots layout, but as an absolute overlay to control z-layer */
-  .arrow-wrap{
-    position:absolute; left:0; right:0; bottom:var(--arrow-b,24px);
-    width:100%; height:var(--arrow-h,80px);
-    z-index:var(--arrow-z,30);
-    pointer-events:none; background:transparent; contain: layout paint size;
+  .scroll-arrow {
+    position: absolute;
+    left: 50%;
+    bottom: var(--bottom, 24px);
+    z-index: var(--z, 50);
+    width: var(--w, 48px);
+    height: auto;
+    pointer-events: none;
+
+    transform: translateX(-50%) translateY(0) scale(var(--scale, 1));
+    animation: arrow-bounce var(--period, 1.6s) ease-in-out infinite;
+
+    opacity: var(--alpha, 1);
+    will-change: transform, opacity;
   }
-  canvas.arrow{
-    position:absolute; inset:0; width:100%; height:100%;
-    display:block; background:transparent;
-    image-rendering:auto;
+
+  @keyframes arrow-bounce {
+    0%, 100% { transform: translateX(-50%) translateY(0)                          scale(var(--scale, 1)); }
+    25%      { transform: translateX(-50%) translateY(calc(var(--amp, 8px) * -1)) scale(var(--scale, 1)); }
+    75%      { transform: translateX(-50%) translateY(var(--amp, 8px))            scale(var(--scale, 1)); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scroll-arrow { animation: none; }
   }
 </style>
 
-<div class="arrow-wrap" style={`--arrow-b:${bottom}px; --arrow-h:${height}px; --arrow-z:${z};`} aria-hidden="true">
-  <canvas class="arrow" data-url={url}
-    data-amp={String(amp)} data-periodms={String(periodMs)} data-dprcap={String(dprCap)}
-    data-basescale={String(baseScale)} data-observe={observeSelector} data-hidethreshold={String(hideThreshold)}
-  ></canvas>
-</div>
+<img
+  src={url}
+  alt={ariaLabel}
+  width={iW}
+  height={iH}
+  class={`scroll-arrow ${className}`}
+  style={`--amp:${amp}; --period:${period}; --scale:${scale}; --bottom:${bottom}; --z:${z}; --w:${width}; --alpha:1;`}
+  data-hideat={String(hideAtPx || 0)}
+  data-fadespan={String(fadeSpanPx)}
+  loading="eager"
+  decoding="sync"
+/>
 
 <script is:inline>
 (function(){
-  var root = document.currentScript && document.currentScript.previousElementSibling;
-  var canvas = root && root.querySelector('canvas.arrow');
-  if (!canvas) { console.warn('[BottomArrow] canvas not found'); return; }
+  var el = document.currentScript && document.currentScript.previousElementSibling;
+  if (!(el && el.tagName === 'IMG')) return;
 
-  var url = canvas.getAttribute('data-url') || '';
-  var AMP = parseFloat(canvas.getAttribute('data-amp') || '12');
-  var PERIOD = Math.max(200, parseFloat(canvas.getAttribute('data-periodms') || '1400'));
-  var DPR_CAP = Math.max(1, parseFloat(canvas.getAttribute('data-dprcap') || '2'));
-  var BASE_SCALE = Math.max(0.01, parseFloat(canvas.getAttribute('data-basescale') || '0.7'));
-  var OBS_SEL = canvas.getAttribute('data-observe') || '.topo-wrap';
-  var HIDE_THRESHOLD = Math.max(0, Math.min(1, parseFloat(canvas.getAttribute('data-hidethreshold') || '0.5')));
+  var hideAt = parseFloat(el.getAttribute('data-hideat') || '0') || 0;
+  var span   = Math.max(1, parseFloat(el.getAttribute('data-fadespan') || '160'));
+  if (!hideAt) return; // no hiding requested
 
-  var ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  var dpr = Math.min(DPR_CAP, Math.max(1, window.devicePixelRatio || 1));
-  var W = 0, H = 0;
-
-  var img = new Image();
-  img.src = url;
-  var iw = 0, ih = 0;
-  img.onload = function(){ iw = img.naturalWidth; ih = img.naturalHeight; resize(); start(); };
-
-  function resize(){
-    var r = canvas.getBoundingClientRect();
-    dpr = Math.min(DPR_CAP, Math.max(1, window.devicePixelRatio || 1));
-    W = Math.max(1, Math.floor(r.width * dpr));
-    H = Math.max(1, Math.floor(r.height * dpr));
-    canvas.width = W; canvas.height = H;
+  function smoothstep(a, b, x){
+    var t = Math.max(0, Math.min(1, (x - a) / Math.max(1e-6, b - a)));
+    return t*t*(3 - 2*t);
   }
 
-  // Observe TopoDots (or hero) visibility
-  var visRatio = 1;
-  var observed = document.querySelector(OBS_SEL);
-  if (observed) {
-    var io = new IntersectionObserver(function(entries){
-      visRatio = entries[0] ? entries[0].intersectionRatio : 1;
-    }, { threshold: buildThresholds() });
-    io.observe(observed);
+  function update(){
+    var y = window.scrollY || window.pageYOffset || 0;
+    // Fade from fully visible -> fully hidden across a band centered on hideAt
+    var start = hideAt - span * 0.5;
+    var end   = hideAt + span * 0.5;
+    var fade  = smoothstep(start, end, y); // 0..1
+    var alpha = 1 - fade;
+    el.style.setProperty('--alpha', String(alpha));
   }
 
-  function buildThresholds(){ var t=[]; for(var i=0;i<=40;i++){ t.push(i/40); } return t; }
-
-  var raf = 0, startTime = 0;
-  function draw(now){
-    raf = requestAnimationFrame(draw);
-    if (!startTime) startTime = now;
-    var elapsed = now - startTime;
-
-    ctx.clearRect(0,0,W,H);
-    if (!img.complete) return;
-
-    // fade alpha based on visibility with a soft edge around threshold
-    var soft = 0.15;
-    var a = smoothstep(HIDE_THRESHOLD - soft, HIDE_THRESHOLD + soft, visRatio);
-    if (a <= 0.001) return;
-    ctx.globalAlpha = a;
-
-    // sine bounce
-    var phase = (elapsed % PERIOD) / PERIOD; // 0..1
-    var offset = Math.sin(phase * Math.PI * 2) * AMP * dpr;
-
-    // center bottom
-    var cx = W * 0.5;
-    var bottom = H;
-
-    var dw = Math.max(1, iw * BASE_SCALE * dpr);
-    var dh = Math.max(1, ih * BASE_SCALE * dpr);
-    var dx = Math.round(cx - dw/2);
-    var dy = Math.round(bottom - dh + offset);
-
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(img, 0,0, iw,ih, dx,dy, dw,dh);
-    ctx.globalAlpha = 1;
-  }
-
-  function start(){ cancelAnimationFrame(raf); startTime = performance.now(); raf = requestAnimationFrame(draw); }
-  function smoothstep(e0, e1, x){ var t = Math.max(0, Math.min(1, (x - e0) / Math.max(1e-6, e1 - e0))); return t*t*(3-2*t); }
-
-  window.addEventListener('resize', resize, { passive:true });
-  resize();
+  update();
+  window.addEventListener('scroll', update, { passive:true });
+  window.addEventListener('resize', update, { passive:true });
 })();
 </script>

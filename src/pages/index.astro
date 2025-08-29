@@ -4,6 +4,7 @@ import Base from "../layouts/Base.astro";
 import TopoDots from "../components/TopoDots.astro";
 import FiveImageSequencer from "../components/FiveImageSequencer.astro";
 import BottomArrow from "../components/BottomArrow.astro"
+import ScrollSpacer from "../components/ScrollSpacer.astro"
 import img1 from "../assets/photos/font_1.png";
 import img2 from "../assets/photos/font_2.png";
 import img3 from "../assets/photos/font_3.png";
@@ -47,14 +48,17 @@ const seqConfig = [
         class="w-full h-full"
       />
     </div>
-    <img
-      src={arrowpng}
-      alt="Scroll down"
-      class="absolute left-1/2 -translate-x-1/2 bottom-6 w-12 h-auto z-50 pointer-events-none"
-      loading="eager"
-      decoding="sync"
+    <BottomArrow
+      amp="10px"
+      period="1.4s"
+      scale={2.25}
+      bottom="185px"
+      z={60}
+      width="64px"
+      hideAtPx={500}    
+      fadeSpanPx={180}  
     />
   </section>
-
-  
 </Base>
+<ScrollSpacer size="60vh" />
+<ScrollSpacer size="60vh" />
