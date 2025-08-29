@@ -1,28 +1,45 @@
 ---
+// page.astro
 import Base from "../layouts/Base.astro";
 import TopoDots from "../components/TopoDots.astro";
 import FiveImageSequencer from "../components/FiveImageSequencer.astro";
+import BottomArrow from "../components/BottomArrow.astro"
 import img1 from "../assets/photos/font_1.png";
 import img2 from "../assets/photos/font_2.png";
 import img3 from "../assets/photos/font_3.png";
 import img4 from "../assets/photos/font_4.png";
 import img5 from "../assets/photos/font_5.png";
+
 const sources = [img1, img2, img3, img4, img5];
 const seqConfig = [
-  { x:  0,  y:  0, baseScale: 1.00 }, // image 1
-  { x:  0,  y:  0, baseScale: 1 }, // image 2
-  { x:  0,  y:  0, baseScale: 1 }, // image 3
-  { x:  0,  y:  0, baseScale: 1 }, // image 4
-  { x:  0,  y:  0, baseScale: 1 }, // image 5
+  { x: 0, y: 0, baseScale: 1 },
+  { x: 0, y: 0, baseScale: 1 },
+  { x: 0, y: 0, baseScale: 1 },
+  { x: 0, y: 0, baseScale: 1 },
+  { x: 0, y: 0, baseScale: 1 },
 ];
 ---
-<Base title="portfoliov1" description="projects">
-  <!-- HERO -->
-  <section class="relative h-[120vh] px-4 md:px-8 lg:px-12 py-12">
-    <TopoDots />
 
-    <!-- shift up by % of this full-height overlay -->
-    <div class="absolute inset-0 z-20 pointer-events-none translate-y-[20%] md:translate-y-[-14%]">
+<Base title="portfoliov1" description="projects">
+  <section class="relative h-[120vh] px-4 md:px-8 lg:px-12 py-12">
+    <TopoDots
+      spacing={24.5}
+      amp={14}
+      sigma={120}
+      falloff="exp"
+      chromaEnabled={true}
+      chromaMode="lighter"
+      rOffsetX={1.2} rOffsetY={0}
+      gOffsetX={-2.5} gOffsetY={1.0}
+      bOffsetX={-1.5} bOffsetY={0}
+      targetFPS={60}
+      dprCap={2}
+      maxDots={9000}
+      ariaHidden={true}
+      chromaStrength={5.0}
+    />
+
+    <div class="absolute inset-0 z-20 pointer-events-none translate-y-[20%] md:translate-y-[-11.8%]">
       <FiveImageSequencer
         sources={sources}
         fps={24}
@@ -30,6 +47,14 @@ const seqConfig = [
         class="w-full h-full"
       />
     </div>
+    <img
+      src={arrowpng}
+      alt="Scroll down"
+      class="absolute left-1/2 -translate-x-1/2 bottom-6 w-12 h-auto z-50 pointer-events-none"
+      loading="eager"
+      decoding="sync"
+    />
   </section>
 
+  
 </Base>

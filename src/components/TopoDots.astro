@@ -1,261 +1,264 @@
 ---
-/* TopoDots — smooth exp falloff, proper RGB overlay near center, fast first paint */
+export interface Props {
+  spacing?: number;
+  baseRadius?: number;
+  amp?: number;
+  sigma?: number;
+  grayBase?: number;
+  grayDepth?: number;
+  falloff?: "exp" | "gauss";
+  dispGamma?: number;
+  chromaReachMult?: number;
+  chromaGamma?: number;
+  chromaEnabled?: boolean;
+  chromaMode?: "lighter" | "source-over";
+  chromaAlphaScale?: number;
+  chromaMaxDistMult?: number;
+  chromaAlphaCutoff?: number;
+  rOffsetX?: number; rOffsetY?: number;
+  gOffsetX?: number; gOffsetY?: number;
+  bOffsetX?: number; bOffsetY?: number;
+  chromaStrength?: number; // NEW: scale RGB intensity
+  maxDots?: number;
+  dprCap?: number;
+  targetFPS?: number;
+  ariaHidden?: boolean;
+}
+
+const {
+  spacing = 21,
+  baseRadius = 2.8,
+  amp = 15,
+  sigma = 110,
+  grayBase = 235,
+  grayDepth = 60,
+  falloff = "exp",
+  dispGamma = 1.0,
+  chromaReachMult = 5.7,
+  chromaGamma = 1.0,
+  chromaEnabled = true,
+  chromaMode = "lighter",
+  chromaAlphaScale = 0.85,
+  chromaMaxDistMult = 2.1,
+  chromaAlphaCutoff = 0.025,
+  rOffsetX = 1.2, rOffsetY = 0,
+  gOffsetX = -2.5, gOffsetY = 1.0,
+  bOffsetX = -1.5, bOffsetY = 0,
+  chromaStrength = 1.0,
+  maxDots = 9000,
+  dprCap = 1.8,
+  targetFPS = 60,
+  ariaHidden = true,
+} = Astro.props;
+
+const CONFIG = {
+  spacing, baseRadius, amp, sigma,
+  grayBase, grayDepth,
+  falloff, dispGamma, chromaReachMult, chromaGamma,
+  chroma: {
+    enabled: chromaEnabled,
+    mode: chromaMode,
+    alphaScale: chromaAlphaScale,
+    r: { x: rOffsetX, y: rOffsetY },
+    g: { x: gOffsetX, y: gOffsetY },
+    b: { x: bOffsetX, y: bOffsetY },
+    strength: chromaStrength, // pass through
+  },
+  chromaMaxDistMult,
+  maxDots,
+  dprCap,
+  targetFPS,
+  chromaAlphaCutoff,
+};
 ---
+
 <style>
   .topo-wrap{
-    position:relative; width:100%; height:min(80vh,900px);
+    position:relative; width:100%; height:min(86.5vh,900px);
     overflow:hidden; background:transparent; border-radius:12px;
     contain: layout paint size;
   }
-  canvas#topo{
+  canvas.topo{
     position:absolute; inset:0; width:100%; height:100%;
     display:block; background:transparent;
-    image-rendering: pixelated; /* crisp tiny squares */
+    image-rendering: pixelated;
   }
 </style>
 
-<div class="topo-wrap" aria-hidden="true">
-  <canvas id="topo"></canvas>
+<div class="topo-wrap" aria-hidden={ariaHidden}>
+  <canvas class="topo" data-config={JSON.stringify(CONFIG)}></canvas>
 </div>
 
-<script>
+<script is:inline>
 // @ts-nocheck
+(function(){
+  const canvas = document.currentScript?.previousElementSibling?.querySelector('canvas.topo');
+  if (!(canvas instanceof HTMLCanvasElement)) return;
+  const raw = canvas.getAttribute('data-config');
+  if (!raw) return;
+  const CONFIG = JSON.parse(raw);
+  const ctx = canvas.getContext('2d', { alpha: true });
+  if (!ctx) return;
+  ctx.imageSmoothingEnabled = false;
 
-// ---------- CONFIG ----------
-const CONFIG = {
-  // visual
-  spacing: 21,
-  baseRadius: 2.8,
-  amp: 15,
-  sigma: 110,
+  const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
+  if (prefersReduced) {
+    CONFIG.amp = Math.min(CONFIG.amp, 6);
+    CONFIG.chroma.enabled = false;
+  }
+  if (/Mobi|Android/i.test(navigator.userAgent)) CONFIG.targetFPS = Math.min(CONFIG.targetFPS, 30);
 
-  grayBase: 235,
-  grayDepth: 60,
+  let dpr = 1, W = 0, H = 0, spacingDevice = 0;
+  let points = [];
+  const state = { tx:0, ty:0, px:0, py:0 };
+  let animating = false;
+  let chromaArmed = false;
 
-  // smooth, edge-less falloff
-  falloff: "exp",        // "exp" (exp(-dist/sigma)) or "gauss"
-  dispGamma: 1.0,
-  chromaReachMult: 5.7,  // RGB fades slower than geometry
-  chromaGamma: 1.0,
+  function setTargetFromEvent(e){ state.tx = e.offsetX * dpr; state.ty = e.offsetY * dpr; }
+  function armAnimation(){ if (animating) return; animating = true; requestAnimationFrame((t)=>draw(t)); }
 
-  // chroma overlay (drawn *over* opaque gray)
-  chroma: {
-    enabled: true,
-    mode: "lighter",     // additive blend on dark bg
-    alphaScale: 0.85,
-    r: { x:  1.2, y: 0 },
-    g: { x: -2.5, y: 1.0 },
-    b: { x: -1.5, y: 0 },
-  },
-  chromaMaxDistMult: 2.1,  // only overlay RGB within ~2.1*sigma
+  canvas.addEventListener('pointermove', (e)=>{ setTargetFromEvent(e); chromaArmed = true; armAnimation(); }, { passive:true });
+  canvas.addEventListener('pointerdown',  (e)=>{ setTargetFromEvent(e); chromaArmed = true; armAnimation(); }, { passive:true });
 
-  // performance
-  maxDots: 9000,
-  dprCap: 1.8,
-  targetFPS: 60,
-  chromaAlphaCutoff: 0.025 // skip RGB when nearly invisible
-};
-// -----------------------------------------
+  function rebuildGrid(){
+    const rect = canvas.getBoundingClientRect();
+    dpr = Math.min(CONFIG.dprCap, Math.max(1, window.devicePixelRatio || 1));
+    W = Math.floor(rect.width  * dpr);
+    H = Math.floor(rect.height * dpr);
+    canvas.width  = W; canvas.height = H;
 
-const el = document.getElementById("topo");
-if (!(el instanceof HTMLCanvasElement)) { console.warn("[TopoDots] canvas missing"); }
-else {
-  const canvas = el;
-  const ctx = canvas.getContext("2d", { alpha:true });
-  if (!ctx) { console.warn("[TopoDots] 2D context unavailable"); }
-  else {
-    ctx.imageSmoothingEnabled = false;
+    spacingDevice = Math.max(4 * dpr, CONFIG.spacing * dpr);
+    let cols = Math.ceil(W / spacingDevice) + 2;
+    let rows = Math.ceil(H / spacingDevice) + 2;
+    let est = cols * rows;
 
-    // reduced motion
-    const prefersReduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
-    if (prefersReduced) {
-      CONFIG.amp = Math.min(CONFIG.amp, 6);
-      CONFIG.chroma.enabled = false;
+    if (est > CONFIG.maxDots) {
+      const scale = Math.sqrt(est / CONFIG.maxDots);
+      spacingDevice *= scale;
+      cols = Math.ceil(W / spacingDevice) + 2;
+      rows = Math.ceil(H / spacingDevice) + 2;
     }
-    if (/Mobi|Android/i.test(navigator.userAgent)) CONFIG.targetFPS = 30;
 
-    // state
-    let dpr = 1, W = 0, H = 0, spacingDevice = 0;
-    let points = /** @type {{x:number,y:number}[]} */ ([]);
-    const state = { tx:0, ty:0, px:0, py:0 };
-
-    let animating = false;
-    let chromaArmed = false;
-
-    function setTargetFromEvent(e){
-      state.tx = e.offsetX * dpr;
-      state.ty = e.offsetY * dpr;
-    }
-    function armAnimation(){
-      if (animating) return;
-      animating = true;
-      requestAnimationFrame((t)=>draw(t));
-    }
-    canvas.addEventListener("pointermove", (e)=>{ setTargetFromEvent(e); chromaArmed = true; armAnimation(); }, { passive:true });
-    canvas.addEventListener("pointerdown",  (e)=>{ setTargetFromEvent(e); chromaArmed = true; armAnimation(); }, { passive:true });
-    canvas.addEventListener("pointerleave", () => {}, { passive:true });
-
-    function rebuildGrid(){
-      const rect = canvas.getBoundingClientRect();
-      dpr = Math.min(CONFIG.dprCap, Math.max(1, window.devicePixelRatio || 1));
-      W = Math.max(1, Math.floor(rect.width  * dpr));
-      H = Math.max(1, Math.floor(rect.height * dpr));
-      canvas.width  = W;
-      canvas.height = H;
-
-      spacingDevice = Math.max(4 * dpr, CONFIG.spacing * dpr);
-      let cols = Math.ceil(W / spacingDevice) + 2;
-      let rows = Math.ceil(H / spacingDevice) + 2;
-      let est = cols * rows;
-
-      if (est > CONFIG.maxDots) {
-        const scale = Math.sqrt(est / CONFIG.maxDots);
-        spacingDevice *= scale;
-        cols = Math.ceil(W / spacingDevice) + 2;
-        rows = Math.ceil(H / spacingDevice) + 2;
+    points.length = 0;
+    const step = spacingDevice, half = step * 0.5;
+    for (let y = -1; y <= Math.ceil(H/step); y++){
+      const gy = y * step + half;
+      for (let x = -1; x <= Math.ceil(W/step); x++){
+        points.push({ x: x * step + half, y: gy });
       }
-
-      points.length = 0;
-      const step = spacingDevice, half = step * 0.5;
-      for (let y = -1; y <= Math.ceil(H/step); y++){
-        const gy = y * step + half;
-        for (let x = -1; x <= Math.ceil(W/step); x++){
-          points.push({ x: x * step + half, y: gy });
-        }
-      }
-    }
-
-    const frameInterval = 1000 / Math.max(1, CONFIG.targetFPS|0);
-    let last = performance.now();
-
-    function draw(now, once=false){
-      const dt = now - last;
-      if (!once && dt < frameInterval) { requestAnimationFrame((t)=>draw(t)); return; }
-      last = now;
-
-      const ease = 0.18 * (dt / 16.67);
-      state.px += (state.tx - state.px) * ease;
-      state.py += (state.ty - state.py) * ease;
-
-      ctx.globalCompositeOperation = "source-over";
-      ctx.clearRect(0, 0, W, H);
-
-      const baseR = CONFIG.baseRadius * dpr;
-      const sigmaDevice = CONFIG.sigma * dpr;
-      const invSigma2Device = 1 / (2 * sigmaDevice * sigmaDevice);
-
-      const chromaPossible = !!(CONFIG.chroma && CONFIG.chroma.enabled);
-      const chromaActive = chromaPossible && chromaArmed;
-      const alphaScale = Math.max(0, Math.min(1, CONFIG.chroma?.alphaScale ?? 0.65));
-      const rOffX = ((CONFIG.chroma?.r?.x) ?? 0) * dpr;
-      const rOffY = ((CONFIG.chroma?.r?.y) ?? 0) * dpr;
-      const gOffX = ((CONFIG.chroma?.g?.x) ?? 0) * dpr;
-      const gOffY = ((CONFIG.chroma?.g?.y) ?? 0) * dpr;
-      const bOffX = ((CONFIG.chroma?.b?.x) ?? 0) * dpr;
-      const bOffY = ((CONFIG.chroma?.b?.y) ?? 0) * dpr;
-      const additive = chromaActive && CONFIG.chroma.mode === "lighter";
-      const chromaMaxDist = sigmaDevice * (CONFIG.chromaMaxDistMult ?? 2.0);
-
-      for (let i = 0, n = points.length; i < n; i++) {
-        const p = points[i];
-        const dx = p.x - state.px;
-        const dy = p.y - state.py;
-        const d2 = dx*dx + dy*dy;
-        const dist = Math.sqrt(d2);
-
-        // base kernel
-        let w;
-        if (CONFIG.falloff === "exp") {
-          w = Math.exp(-dist / Math.max(1e-6, sigmaDevice));
-        } else {
-          w = Math.exp(-d2 * invSigma2Device);
-        }
-        const wDisp   = Math.pow(w, CONFIG.dispGamma);
-        const wChroma = Math.pow(
-          (CONFIG.falloff === "exp"
-            ? Math.exp(-dist / Math.max(1e-6, sigmaDevice * CONFIG.chromaReachMult))
-            : Math.exp(-d2 / (2 * (sigmaDevice * CONFIG.chromaReachMult) ** 2))
-          ), CONFIG.chromaGamma
-        );
-
-        // displacement
-        let x = p.x, y = p.y;
-        if (wDisp > 0.0001) {
-          const invLen = 1 / Math.sqrt(d2 + 1e-6);
-          const ux = dx * invLen, uy = dy * invLen;
-          const disp = CONFIG.amp * dpr * wDisp;
-          x = p.x - ux * disp;
-          y = p.y - uy * disp;
-        }
-
-        // size & grayscale (compute first)
-        const r = Math.max(baseR * 0.35, baseR * (1 - 0.7 * wDisp));
-        let gray = CONFIG.grayBase - CONFIG.grayDepth * wDisp;
-        gray = gray < 0 ? 0 : (gray > 255 ? 255 : gray);
-        const g255 = gray | 0;
-
-        // quantized coords
-        const qx = Math.round(x);
-        const qy = Math.round(y);
-        const s = r + r;
-
-        // 1) ALWAYS draw opaque grayscale base so nothing looks dim
-        ctx.fillStyle = `rgb(${g255},${g255},${g255})`;
-        ctx.fillRect(qx - r, qy - r, s, s);
-
-        // 2) Optionally overlay RGB only near center, with intensity gating
-        if (chromaActive && dist < chromaMaxDist && wChroma > 0.0001) {
-          // local intensity: 0 far away, 1 near center
-          const localIntensity = Math.max(0, Math.min(1, (CONFIG.grayBase - gray) / Math.max(1, CONFIG.grayDepth)));
-          let alpha = alphaScale * wChroma * localIntensity; // fade with distance AND darkness
-          if (alpha > CONFIG.chromaAlphaCutoff) {
-            if (additive) ctx.globalCompositeOperation = "lighter";
-            // R
-            ctx.fillStyle = `rgba(255,0,0,${alpha})`;
-            ctx.fillRect(qx + rOffX - r, qy + rOffY - r, s, s);
-            // G
-            ctx.fillStyle = `rgba(0,255,0,${alpha})`;
-            ctx.fillRect(qx + gOffX - r, qy + gOffY - r, s, s);
-            // B
-            ctx.fillStyle = `rgba(0,0,255,${alpha})`;
-            ctx.fillRect(qx + bOffX - r, qy + bOffY - r, s, s);
-            if (additive) ctx.globalCompositeOperation = "source-over";
-          }
-        }
-      }
-
-      if (!once) requestAnimationFrame((t)=>draw(t));
-    }
-
-    // init & observers
-    let roTimer = 0;
-    const ro = new ResizeObserver(() => {
-      clearTimeout(roTimer);
-      roTimer = setTimeout(() => { rebuildGrid(); paintStatic(); }, 50);
-    });
-    ro.observe(canvas.parentElement ?? canvas);
-    rebuildGrid();
-
-    // seed pointer center
-    state.tx = W * 0.5; state.ty = H * 0.5;
-    state.px = state.tx; state.py = state.ty;
-
-    // first paint ASAP: static, no chroma
-    function paintStatic(){
-      const savedChroma = CONFIG.chroma.enabled;
-      CONFIG.chroma.enabled = false;
-      last = performance.now() - (1000/Math.max(1, CONFIG.targetFPS|0));
-      draw(performance.now(), /*once=*/true);
-      CONFIG.chroma.enabled = savedChroma;
-    }
-    queueMicrotask(paintStatic);
-
-    // arm animation lazily
-    if ("requestIdleCallback" in window) {
-      requestIdleCallback(() => armAnimation(), { timeout: 120 });
-    } else {
-      setTimeout(armAnimation, 60);
     }
   }
-}
+
+  const frameInterval = 1000 / Math.max(1, CONFIG.targetFPS|0);
+  let last = performance.now();
+
+  function draw(now, once=false){
+    const dt = now - last;
+    if (!once && dt < frameInterval) { requestAnimationFrame((t)=>draw(t)); return; }
+    last = now;
+
+    const ease = 0.18 * (dt / 16.67);
+    state.px += (state.tx - state.px) * ease;
+    state.py += (state.ty - state.py) * ease;
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, W, H);
+
+    const baseR = CONFIG.baseRadius * dpr;
+    const sigmaDevice = CONFIG.sigma * dpr;
+    const invSigma2Device = 1 / (2 * sigmaDevice * sigmaDevice);
+
+    const chromaPossible = !!(CONFIG.chroma && CONFIG.chroma.enabled);
+    const chromaActive = chromaPossible && chromaArmed;
+    const alphaScale = CONFIG.chroma?.alphaScale ?? 0.65;
+    const strength = CONFIG.chroma?.strength ?? 1.0;
+    const rOffX = (CONFIG.chroma?.r?.x ?? 0) * dpr;
+    const rOffY = (CONFIG.chroma?.r?.y ?? 0) * dpr;
+    const gOffX = (CONFIG.chroma?.g?.x ?? 0) * dpr;
+    const gOffY = (CONFIG.chroma?.g?.y ?? 0) * dpr;
+    const bOffX = (CONFIG.chroma?.b?.x ?? 0) * dpr;
+    const bOffY = (CONFIG.chroma?.b?.y ?? 0) * dpr;
+    const additive = chromaActive && CONFIG.chroma.mode === 'lighter';
+    const chromaMaxDist = sigmaDevice * (CONFIG.chromaMaxDistMult ?? 2.0);
+
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const dx = p.x - state.px;
+      const dy = p.y - state.py;
+      const d2 = dx*dx + dy*dy;
+      const dist = Math.sqrt(d2);
+
+      let w = CONFIG.falloff === 'exp' ? Math.exp(-dist / Math.max(1e-6, sigmaDevice)) : Math.exp(-d2 * invSigma2Device);
+      const wDisp   = Math.pow(w, CONFIG.dispGamma);
+      const wChroma = Math.pow(
+        CONFIG.falloff === 'exp' ? Math.exp(-dist / Math.max(1e-6, sigmaDevice * CONFIG.chromaReachMult)) : Math.exp(-d2 / (2 * (sigmaDevice * CONFIG.chromaReachMult) ** 2)),
+        CONFIG.chromaGamma
+      );
+
+      let x = p.x, y = p.y;
+      if (wDisp > 0.0001) {
+        const invLen = 1 / Math.sqrt(d2 + 1e-6);
+        const ux = dx * invLen, uy = dy * invLen;
+        const disp = CONFIG.amp * dpr * wDisp;
+        x = p.x - ux * disp;
+        y = p.y - uy * disp;
+      }
+
+      const r = Math.max(baseR * 0.35, baseR * (1 - 0.7 * wDisp));
+      let gray = CONFIG.grayBase - CONFIG.grayDepth * wDisp;
+      gray = Math.max(0, Math.min(255, gray));
+      const g255 = gray | 0;
+
+      const qx = Math.round(x);
+      const qy = Math.round(y);
+      const s = r + r;
+
+      ctx.fillStyle = `rgb(${g255},${g255},${g255})`;
+      ctx.fillRect(qx - r, qy - r, s, s);
+
+      if (chromaActive && dist < chromaMaxDist && wChroma > 0.0001) {
+        const localIntensity = Math.max(0, Math.min(1, (CONFIG.grayBase - gray) / Math.max(1, CONFIG.grayDepth)));
+        let alpha = strength * alphaScale * wChroma * localIntensity;
+        if (alpha > CONFIG.chromaAlphaCutoff) {
+          if (additive) ctx.globalCompositeOperation = 'lighter';
+          ctx.fillStyle = `rgba(255,0,0,${alpha})`;
+          ctx.fillRect(qx + rOffX - r, qy + rOffY - r, s, s);
+          ctx.fillStyle = `rgba(0,255,0,${alpha})`;
+          ctx.fillRect(qx + gOffX - r, qy + gOffY - r, s, s);
+          ctx.fillStyle = `rgba(0,0,255,${alpha})`;
+          ctx.fillRect(qx + bOffX - r, qy + bOffY - r, s, s);
+          if (additive) ctx.globalCompositeOperation = 'source-over';
+        }
+      }
+    }
+
+    if (!once) requestAnimationFrame((t)=>draw(t));
+  }
+
+  let roTimer = 0;
+  const ro = new ResizeObserver(() => {
+    clearTimeout(roTimer);
+    roTimer = setTimeout(() => { rebuildGrid(); paintStatic(); }, 50);
+  });
+  ro.observe(canvas.parentElement ?? canvas);
+  rebuildGrid();
+
+  state.tx = W * 0.5; state.ty = H * 0.5;
+  state.px = state.tx; state.py = state.ty;
+
+  function paintStatic(){
+    const saved = CONFIG.chroma.enabled;
+    CONFIG.chroma.enabled = false;
+    last = performance.now() - (1000/Math.max(1, CONFIG.targetFPS|0));
+    draw(performance.now(), true);
+    CONFIG.chroma.enabled = saved;
+  }
+  queueMicrotask(paintStatic);
+
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => armAnimation(), { timeout: 120 });
+  } else {
+    setTimeout(armAnimation, 60);
+  }
+})();
 </script>
