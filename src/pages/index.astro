@@ -5,11 +5,22 @@ import TopoDots from "../components/TopoDots.astro";
 import FiveImageSequencer from "../components/FiveImageSequencer.astro";
 import BottomArrow from "../components/BottomArrow.astro"
 import ScrollSpacer from "../components/ScrollSpacer.astro"
+import HoldEnterButton from "../components/HoldEnterButton.astro";
+import ChoiceCarousel from "../components/ChoiceCarousel.astro";
+
 import img1 from "../assets/photos/font_1.png";
 import img2 from "../assets/photos/font_2.png";
 import img3 from "../assets/photos/font_3.png";
 import img4 from "../assets/photos/font_4.png";
 import img5 from "../assets/photos/font_5.png";
+import overlay from "../assets/photos/tv overlay.png"
+import opt1 from "../assets/photos/filefolder.avif"
+import opt2 from "../assets/photos/music.png"
+import opt3 from "../assets/photos/voicerecordings.jpg"
+import rightIcon from "../assets/photos/lock.png"
+import arrow from "../assets/photos/arrow_white.png"
+
+
 
 const sources = [img1, img2, img3, img4, img5];
 const seqConfig = [
@@ -18,6 +29,11 @@ const seqConfig = [
   { x: 0, y: 0, baseScale: 1 },
   { x: 0, y: 0, baseScale: 1 },
   { x: 0, y: 0, baseScale: 1 },
+];
+const items = [
+  { src: opt1.src, href: "/projects", label: "Projects" },
+  { src: opt2.src, href: "/music",    label: "Music"    },
+  { src: opt3.src, href: "/voicememos",      label: "voicememos"      },
 ];
 ---
 
@@ -37,7 +53,7 @@ const seqConfig = [
       dprCap={2}
       maxDots={9000}
       ariaHidden={true}
-      chromaStrength={5.0}
+      chromaStrength={15.0}
     />
 
     <div class="absolute inset-0 z-20 pointer-events-none translate-y-[20%] md:translate-y-[-11.8%]">
@@ -60,5 +76,31 @@ const seqConfig = [
     />
   </section>
 </Base>
-<ScrollSpacer size="60vh" />
-<ScrollSpacer size="60vh" />
+<ScrollSpacer size="120vh" />
+<section id="enter-stage" class="relative h-[60vh]">
+  <img
+    src={overlay.src}
+    alt=""
+    aria-hidden="true"
+    class="absolute inset-0 w-full h-full object-fill pointer-events-none origin-top"
+    style="transform: scale(0.90, 1.7);"
+  />
+  <HoldEnterButton
+    durationMs={5000}
+    targetSelector="#enter-stage"
+    label="ENTER"
+    icon={rightIcon}      
+    iconWidth="14px"
+    hideOnComplete={true}
+  />
+
+  <ChoiceCarousel
+    targetSelector="#enter-stage"
+    items={items}
+    class="px-4"
+    leftArrow={arrow}
+    rightArrow={arrow}
+  />
+</section>
+
+<ScrollSpacer size="50vh" />  

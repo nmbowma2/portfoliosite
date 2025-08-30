@@ -1,0 +1,132 @@
+---
+export interface Props {
+  label?: string;
+  durationMs?: number;            // default 3000
+  targetSelector?: string;        // default "#enter-stage"
+  icon?: string | { src: string };// optional right-side icon
+  iconWidth?: string;             // e.g. "16px"
+  hideOnComplete?: boolean;       // default true
+  class?: string;
+}
+
+const {
+  label = "ENTER",
+  durationMs = 3000,
+  targetSelector = "#enter-stage",
+  icon,
+  iconWidth = "16px",
+  hideOnComplete = true,
+  class: className = "",
+} = Astro.props;
+
+
+const iconUrl = icon ? (typeof icon === "string" ? icon : icon.src) : null;
+---
+
+<style>
+  .enter-wrap { position:absolute; left:50%; bottom:125px; transform:translateX(-50%); z-index:70; }
+  .enter-btn {
+    -webkit-tap-highlight-color: transparent;
+    position: relative; display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+    padding: 14px 28px; border-radius: 10px; border:0; cursor:pointer;
+    background:#ef4444; color:white; font-weight:700; letter-spacing:.06em;
+    box-shadow: 0 6px 18px rgba(239,68,68,.25);
+    transform: scale(var(--press,1));
+    filter: brightness(var(--b,1));
+    transition: transform 150ms ease, filter 120ms ease, opacity 200ms ease;
+  }
+  .enter-btn:hover  { --b:.92; }
+  .enter-btn:active { --b:.85; --press:1.03; }
+  .enter-btn[aria-disabled="true"] { cursor:default; opacity:.65; --b:1; }
+
+  .enter-svg { position:absolute; inset:-6px; width:calc(100% + 12px); height:calc(100% + 12px); pointer-events:none; }
+  .enter-stroke { fill:none; stroke:#000000; stroke-width:3; stroke-linecap:round; opacity:0; transition: opacity 100ms ease; }
+
+  .icon { width: var(--iw,16px); height:auto; display:block; pointer-events:none; }
+  .hint { position:absolute; top:100%; left:50%; transform:translate(-50%,8px); font-size:.75rem; color:#fca5a5; }
+  @media (prefers-reduced-motion: reduce){ .enter-btn{ transition:none; } }
+</style>
+
+<div class={`enter-wrap ${className}`} data-target={targetSelector} data-dur={String(durationMs)} data-hide={hideOnComplete ? "1" : "0"} style={`--iw:${iconWidth};`}>
+  <button class="enter-btn" type="button" aria-pressed="false">
+    <span>{label}</span>
+    {iconUrl && <img class="icon" src={iconUrl} alt="" aria-hidden="true" />}
+    <svg class="enter-svg" viewBox="0 0 200 72" preserveAspectRatio="none">
+      <!-- start at top-center => M100 0, then clockwise -->
+      <path class="enter-stroke" d="M100 0 L200 0 L200 72 L0 72 L0 0 L100 0 Z" />
+    </svg>
+    <span class="hint" aria-hidden="true"></span>
+  </button>
+</div>
+
+<script is:inline>
+(() => {
+  const wrap = document.currentScript?.previousElementSibling;
+  if (!wrap) return;
+  const btn   = wrap.querySelector('.enter-btn');
+  const svgP  = wrap.querySelector('.enter-stroke');
+  const targetSel = wrap.getAttribute('data-target') || '#enter-stage';
+  const target = document.querySelector(targetSel);
+  if (!btn || !svgP || !target) return;
+
+  const dur = parseInt(wrap.getAttribute('data-dur') || '3000', 10);
+  const hideOnComplete = wrap.getAttribute('data-hide') === '1';
+
+  let total = 0, holding = false, startT = 0, rafId = 0;
+
+  function measure(){
+    try { total = svgP.getTotalLength(); } catch { total = 544; }
+    svgP.style.strokeDasharray = `0 ${total}`;
+    svgP.style.strokeDashoffset = '0';
+    svgP.style.opacity = '0'; // hidden until press
+  }
+  function reset(){
+    holding = false;
+    btn.setAttribute('aria-pressed','false');
+    btn.style.setProperty('--press','1');
+    svgP.style.strokeDasharray = `0 ${total}`;
+    svgP.style.opacity = '0';
+    cancelAnimationFrame(rafId);
+  }
+  function complete(){
+    btn.setAttribute('aria-disabled','true');
+    svgP.style.strokeDasharray = `${total} 0`;
+    target.setAttribute('data-entered', 'true');
+    window.dispatchEvent(new CustomEvent('enter:activated', { detail:{ selector: targetSel }}));
+    if (hideOnComplete) {
+      // fade out then remove
+      btn.style.opacity = '0';
+      setTimeout(() => wrap.remove(), 180);
+    }
+  }
+  function tick(now){
+    if (!holding) return;
+    const t = Math.min(1, (now - startT) / dur);
+    const seg = t * total;
+    svgP.style.strokeDasharray = `${seg} ${Math.max(0,total - seg)}`;
+    if (t >= 1) { complete(); return; }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  const down = () => {
+    if (target.getAttribute('data-entered') === 'true') return;
+    holding = true;
+    btn.setAttribute('aria-pressed','true');
+    btn.style.setProperty('--press','1.03');
+    startT = performance.now();
+    svgP.style.opacity = '1';
+    rafId = requestAnimationFrame(tick);
+  };
+  const up = () => { if (holding) reset(); };
+
+  btn.addEventListener('pointerdown', down, { passive:true });
+  btn.addEventListener('pointerup', up, { passive:true });
+  btn.addEventListener('pointercancel', up, { passive:true });
+  btn.addEventListener('pointerleave', up, { passive:true });
+  btn.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') down(); });
+  btn.addEventListener('keyup',   e => { if (e.key === ' ' || e.key === 'Enter') up(); });
+
+  measure();
+  addEventListener('resize', measure, { passive:true });
+})();
+</script>
