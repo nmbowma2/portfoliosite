@@ -143,7 +143,7 @@ const iconUrl = icon ? (typeof icon === "string" ? icon : icon.src) : null;
     target.setAttribute('data-entered','true');     // carousel will read this
     maybeFadeOverlay();                              // default no-op
     window.dispatchEvent(new CustomEvent('enter:activated', { detail:{ selector: targetSel }}));
-    if (hideOnDone){ btn.style.opacity = '0'; setTimeout(() => wrap.remove(), 180); }
+    if (hideOnDone){ wrap.style.display = 'none'; }
   }
 
   function tick(now){

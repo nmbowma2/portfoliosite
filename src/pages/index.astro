@@ -13,14 +13,23 @@ import img2 from "../assets/photos/font_2.png";
 import img3 from "../assets/photos/font_3.png";
 import img4 from "../assets/photos/font_4.png";
 import img5 from "../assets/photos/font_5.png";
-import overlay from "../assets/photos/tv overlay.png"
+import overlay1 from "../assets/photos/tv overlay_2.gif"
+import overlay2 from "../assets/photos/tv overlay.png"
 import opt1 from "../assets/photos/filefolder.avif"
 import opt2 from "../assets/photos/music.png"
 import opt3 from "../assets/photos/voicerecordings.jpg"
 import rightIcon from "../assets/photos/lock.png"
 import arrow from "../assets/photos/arrow_white.png"
 import arrowblack from "../assets/photos/arrow_black.png"
+const overlayScaleX = 0.9;
+const overlayScaleY = 1.7;
+const overlayOffsetY = `${(overlayScaleY - 1) * 50}%`;
 
+const screenLeft   = '13.25%';   // <-- tune
+const screenTop    = '252%';   // <-- tune
+const screenWidth  = '73%';   // <-- tune
+const screenHeight = '64%';   // <-- tune
+const screenAspect = '4 / 3'; // adjust if your screen is different
 
 
 const sources = [img1, img2, img3, img4, img5];
@@ -78,54 +87,60 @@ const items = [
   </section>
 </Base>
 <ScrollSpacer size="120vh" />
-<section id="enter-stage" class="relative h-[60vh]">
-  <img
-    src={overlay.src}
-    alt=""
-    class="overlay-img absolute inset-0 w-full h-full object-fill origin-top"
-    style="transform: scale(0.90, 1.7);"
-  />
 
-  <!-- Hold-to-activate button; hides itself and fades the overlay on success -->
+<section id="enter-stage" class="relative h-[60vh]">
+
+  <!-- Group BOTH overlay + carousel under the SAME transform -->
+  <div class="overlay-group absolute inset-0 origin-top"
+       style={`transform: scale(${overlayScaleX}, ${overlayScaleY});`}>
+
+    <!-- The overlay PNG -->
+    <img
+      src={overlay2.src}
+      alt=""
+      class="absolute inset-0 w-full h-full object-fill pointer-events-none"
+    />
+
+    <!-- The TV screen “slot” (positioned in %; no clipping) -->
+    <div class="tv-screen absolute"
+         style={`left:${screenLeft}; top:${screenTop}; width:${screenWidth}; height:${screenHeight};`}>
+
+      <!-- Center the carousel inside the slot -->
+      <ChoiceCarousel
+        targetSelector="#enter-stage"
+        items={items}
+        leftArrow={arrowblack}
+        rightArrow={arrowblack}
+
+        top="50%" left="50%" centerX={true} centerY={true}
+        offsetX="0" offsetY="0"
+
+        frameMaxWidth="100%"
+        frameAspect={screenAspect}
+        frameRadius={12}
+        frameScale={1}
+
+        leftX="-56%"  leftY="0%"  leftScale={1.05}
+        rightX="56%"  rightY="0%"  rightScale={1.05}
+        arrowButtonSize="56px"
+        arrowIconWidth="34px"
+
+        navigateOnClick={false}
+      />
+    </div>
+  </div>
+
+  <!-- Hold-to-activate (tell it to fade the WHOLE overlay group) -->
   <HoldEnterButton
-    durationMs={1000}
+    durationMs={3000}
     targetSelector="#enter-stage"
+    overlaySelector=".overlay-group"
     label="ENTER"
-    strokeRadius = {10}
+    strokeRadius={10}
     hideOnComplete={true}
-    icon = {rightIcon}
+    icon={rightIcon}
     strokeStart="bottom-center"
   />
-
-  <!-- Carousel: appears above the old button, over the overlay (z-index 60) -->
-
-  <ChoiceCarousel
-    targetSelector="#enter-stage"
-    items={items}
-    leftArrow={arrowblack}
-    rightArrow={arrowblack}
-
-    z={60}
-    bottom="-15%"      
-    left="25%"          
-    centerX={true}      
-    offsetX="500"
-    offsetY="0"
-    frameMaxWidth="min(92vw, 960px)"
-    frameAspect="16 / 9"
-    frameRadius={12}
-    frameScale={.65}      
-
-
-    leftX="-32%" leftY="600%" leftScale={6.0}
-    rightX="52%" rightY="600%" rightScale={6.0}
-
-    arrowButtonSize="56px"
-    arrowIconWidth="34px"
-
-    navigateOnClick={false} 
-  />
-
 </section>
 
 <ScrollSpacer size="50vh" />  

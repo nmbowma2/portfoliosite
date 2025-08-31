@@ -5,30 +5,52 @@ export interface Props {
   items?: Item[];
   targetSelector?: string;
 
-  /* Wrapper position (relative to the section) */
+  /* Host (wrapper) position - desktop */
   top?: string; bottom?: string; left?: string; right?: string;
   centerX?: boolean; centerY?: boolean;
   offsetX?: string;  offsetY?: string;
   z?: number;
 
-  /* Frame (image wrapper) sizing */
+  /* Host (wrapper) position - mobile overrides */
+  topSm?: string; bottomSm?: string; leftSm?: string; rightSm?: string;
+  centerXSm?: boolean; centerYSm?: boolean;
+  offsetXSm?: string;  offsetYSm?: string;
+
+  /* Frame sizing - desktop */
   frameMaxWidth?: string;   // e.g. "min(92vw, 960px)"
   frameAspect?: string;     // e.g. "16 / 9"
-  frameRadius?: number;     // px radius for rounded corners
-  frameScale?: number;      // overall scale of the frame (multiplier)
+  frameRadius?: number;     // px
+  frameScale?: number;      // multiplier
 
-  /* Arrow art and controls */
+  /* Frame sizing - mobile overrides */
+  frameMaxWidthSm?: string;
+  frameAspectSm?: string;
+  frameRadiusSm?: number;
+  frameScaleSm?: number;
+
+  /* Arrow art */
   leftArrow?: string | { src: string };
   rightArrow?: string | { src: string };
 
-  /* per-arrow absolute positioning (relative to the FRAME center) */
-  leftX?: string;  leftY?: string;   // CSS length/%, applied from frame center
+  /* Arrow placement - desktop (relative to frame center) */
+  leftX?: string;  leftY?: string;
   rightX?: string; rightY?: string;
-  leftScale?: number;  rightScale?: number; // scale factors
-  arrowButtonSize?: string;                 // button hit area (e.g. "56px")
-  arrowIconWidth?: string;                  // icon width inside button (e.g. "34px")
+  leftScale?: number;  rightScale?: number;
 
+  /* Arrow placement - mobile overrides */
+  leftXSm?: string;  leftYSm?: string;
+  rightXSm?: string; rightYSm?: string;
+  leftScaleSm?: number;  rightScaleSm?: number;
+
+  /* Arrow sizes - desktop & mobile */
+  arrowButtonSize?: string;                 // hit area, e.g. "56px"
+  arrowIconWidth?: string;                  // icon width, e.g. "34px"
+  arrowButtonSizeSm?: string;
+  arrowIconWidthSm?: string;
+
+  /* Behavior */
   navigateOnClick?: boolean;
+  enablePreload?: boolean;                  // optional: default on
   class?: string;
 }
 
@@ -36,23 +58,46 @@ const {
   items = [],
   targetSelector = "#enter-stage",
 
+  // Host desktop
   top = "auto", bottom = "96px", left = "50%", right = "auto",
   centerX = true, centerY = false, offsetX = "0", offsetY = "0", z = 60,
 
+  // Host mobile (fallbacks to desktop)
+  topSm = top, bottomSm = bottom, leftSm = left, rightSm = right,
+  centerXSm = centerX, centerYSm = centerY, offsetXSm = offsetX, offsetYSm = offsetY,
+
+  // Frame desktop
   frameMaxWidth = "min(92vw, 960px)",
   frameAspect = "16 / 9",
   frameRadius = 12,
   frameScale = 1,
 
+  // Frame mobile (fallbacks)
+  frameMaxWidthSm = frameMaxWidth,
+  frameAspectSm = frameAspect,
+  frameRadiusSm = frameRadius,
+  frameScaleSm = frameScale,
+
   leftArrow, rightArrow,
 
+  // Arrow desktop
   leftX = "-40%",  leftY = "60%",
   rightX = "40%",  rightY = "60%",
   leftScale = 1,   rightScale = 1,
+
+  // Arrow mobile (fallbacks)
+  leftXSm = leftX,   leftYSm = leftY,
+  rightXSm = rightX, rightYSm = rightY,
+  leftScaleSm = leftScale, rightScaleSm = rightScale,
+
+  // Arrow sizes
   arrowButtonSize = "56px",
   arrowIconWidth = "34px",
+  arrowButtonSizeSm = "44px",
+  arrowIconWidthSm = "28px",
 
   navigateOnClick = false,
+  enablePreload = true,
   class: className = "",
 } = Astro.props;
 
@@ -61,8 +106,11 @@ const normalized = items.map(it => ({ src: toUrl(it.src), label: it.label || "",
 const lUrl = leftArrow  ? toUrl(leftArrow)  : null;
 const rUrl = rightArrow ? toUrl(rightArrow) : null;
 
+/* translate components for host */
 const tx = `${centerX ? "-50%" : "0"} + ${offsetX}`;
 const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
+const txSm = `${centerXSm ? "-50%" : "0"} + ${offsetXSm}`;
+const tySm = `${centerYSm ? "-50%" : "0"} + ${offsetYSm}`;
 ---
 
 <style>
@@ -70,22 +118,26 @@ const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
     position:absolute;
     opacity:0; pointer-events:none;
     transition: opacity 200ms ease;
+    /* host positioning via CSS vars (desktop) */
+    top: var(--host-top);
+    bottom: var(--host-bottom);
+    left: var(--host-left);
+    right: var(--host-right);
+    transform: translate(calc(var(--host-tx)), calc(var(--host-ty)));
+    z-index: var(--z);
   }
   .carousel-host.is-on{ opacity:1; pointer-events:auto; }
 
   .shell{ position:relative; width: var(--frameW); }
 
-  
+  /* allow arrows to extend beyond the frame; clip image only via .mask */
   .frame{
     position: relative;
     width: 100%;
     aspect-ratio: var(--aspect);
-    /* allow arrows to extend outside the frame bounds */
-    overflow: visible;
     transform: scale(var(--frameScale));
     transform-origin: center;
   }
-  /* new: clip only the image, not the arrows */
   .mask{
     position: absolute; inset: 0;
     background: #0f0f10;
@@ -97,6 +149,7 @@ const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
     display:block; width:100%; height:100%;
     object-fit:cover; user-select:none; -webkit-user-drag:none;
   }
+
   /* Arrows absolutely over the FRAME, from its center */
   .nav{
     -webkit-tap-highlight-color: transparent;
@@ -114,9 +167,22 @@ const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
   .nav.left  img{ transform: rotate(90deg); }
   .nav.right img{ transform: rotate(-90deg); }
 
+  /* Mobile overrides at <= 640px */
   @media (max-width: 640px){
-    .nav{ --btnSize:44px; }
-    .nav img{ --iconW:28px; }
+    .carousel-host{
+      top: var(--host-top-sm);
+      bottom: var(--host-bottom-sm);
+      left: var(--host-left-sm);
+      right: var(--host-right-sm);
+      transform: translate(calc(var(--host-tx-sm)), calc(var(--host-ty-sm)));
+    }
+    .shell{ width: var(--frameW-sm); }
+    .frame{ aspect-ratio: var(--aspect-sm); transform: scale(var(--frameScale-sm)); }
+    .mask{ border-radius: var(--radius-sm); }
+    .nav{ width: var(--btnSize-sm); height: var(--btnSize-sm); }
+    .nav img{ width: var(--iconW-sm); }
+    .nav.left  { --x: var(--x-sm); --y: var(--y-sm); --s: var(--s-sm); }
+    .nav.right { --x: var(--x-sm); --y: var(--y-sm); --s: var(--s-sm); }
   }
 </style>
 
@@ -125,28 +191,47 @@ const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
   data-target={targetSelector}
   data-items={JSON.stringify(normalized)}
   data-nav={navigateOnClick ? "1" : "0"}
+  data-preload={enablePreload ? "1" : "0"}
   style={`
-    z-index:${z};
-    top:${top}; bottom:${bottom}; left:${left}; right:${right};
-    transform: translate(calc(${tx}), calc(${ty}));
-    --frameW:${frameMaxWidth};
-    --aspect:${frameAspect};
-    --radius:${frameRadius}px;
-    --frameScale:${frameScale};
-    --btnSize:${arrowButtonSize};
-    --iconW:${arrowIconWidth};
+    --z:${z};
+    /* host vars (desktop + mobile) */
+    --host-top:${top}; --host-bottom:${bottom}; --host-left:${left}; --host-right:${right};
+    --host-tx:${tx};  --host-ty:${ty};
+    --host-top-sm:${topSm}; --host-bottom-sm:${bottomSm}; --host-left-sm:${leftSm}; --host-right-sm:${rightSm};
+    --host-tx-sm:${txSm};  --host-ty-sm:${tySm};
+    /* frame vars */
+    --frameW:${frameMaxWidth};      --frameW-sm:${frameMaxWidthSm};
+    --aspect:${frameAspect};        --aspect-sm:${frameAspectSm};
+    --radius:${frameRadius}px;      --radius-sm:${frameRadiusSm}px;
+    --frameScale:${frameScale};     --frameScale-sm:${frameScaleSm};
+    /* arrow shared sizes */
+    --btnSize:${arrowButtonSize};   --btnSize-sm:${arrowButtonSizeSm};
+    --iconW:${arrowIconWidth};      --iconW-sm:${arrowIconWidthSm};
   `}
 >
   <div class="shell">
     <div class="frame">
       <div class="mask">
-        <img id="cc-img" alt="" />
+        <img id="cc-img" alt="" loading="eager" decoding="async" fetchpriority="high" />
       </div>
-      <!-- arrows positioned relative to FRAME center -->
-      <button class="nav left"  type="button" aria-label="Previous" style={`--x:${leftX};  --y:${leftY};  --s:${leftScale};`}>
+
+      <!-- LEFT: desktop positions + mobile overrides via CSS vars -->
+      <button
+        class="nav left"
+        type="button"
+        aria-label="Previous"
+        style={`--x:${leftX}; --y:${leftY}; --s:${leftScale}; --x-sm:${leftXSm}; --y-sm:${leftYSm}; --s-sm:${leftScaleSm};`}
+      >
         {lUrl ? <img src={lUrl} alt="" /> : <span aria-hidden="true" style="font-size:28px;line-height:1">‹</span>}
       </button>
-      <button class="nav right" type="button" aria-label="Next"     style={`--x:${rightX}; --y:${rightY}; --s:${rightScale};`}>
+
+      <!-- RIGHT: desktop positions + mobile overrides via CSS vars -->
+      <button
+        class="nav right"
+        type="button"
+        aria-label="Next"
+        style={`--x:${rightX}; --y:${rightY}; --s:${rightScale}; --x-sm:${rightXSm}; --y-sm:${rightYSm}; --s-sm:${rightScaleSm};`}
+      >
         {rUrl ? <img src={rUrl} alt="" /> : <span aria-hidden="true" style="font-size:28px;line-height:1">›</span>}
       </button>
     </div>
@@ -166,14 +251,65 @@ const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
   const left  = host.querySelector('.nav.left');
   const right = host.querySelector('.nav.right');
   const navGo = host.getAttribute('data-nav') === '1';
+  const doPreload = host.getAttribute('data-preload') !== '0';
 
+  // ---- Optional: PRELOAD / DECODE cache for snappy nav ----
+  const cache = new Map();
+  const inflight = new Map();
+  function ensurePrefetchLink(src){
+    if (!src || document.head.querySelector(`link[rel="prefetch"][href="${src}"]`)) return;
+    const l = document.createElement('link');
+    l.rel = 'prefetch'; l.as = 'image'; l.href = src;
+    document.head.appendChild(l);
+  }
+  function preload(src){
+    if (!doPreload || !src) return Promise.resolve(null);
+    if (cache.has(src)) return Promise.resolve(cache.get(src));
+    if (inflight.has(src)) return inflight.get(src);
+    ensurePrefetchLink(src);
+    const p = new Promise((resolve) => {
+      const im = new Image();
+      im.decoding = 'async';
+      im.loading = 'eager';
+      im.src = src;
+      const done = () => {
+        (im.decode?.() ?? Promise.resolve()).finally(() => { cache.set(src, im); resolve(im); });
+      };
+      if (im.complete) done();
+      else im.addEventListener('load', done, { once:true });
+    }).finally(() => inflight.delete(src));
+    inflight.set(src, p);
+    return p;
+  }
+  function preloadIdx(idx){
+    const s = items[idx]?.src; return preload(s);
+  }
+  function preloadNeighbors(idx){
+    const n = items.length; if (!n) return;
+    preloadIdx((idx - 1 + n) % n);
+    preloadIdx((idx + 1) % n);
+  }
+
+  // ---- RENDERING ----
   let i = 0;
+  function setImage(src, label){
+    const cached = cache.get(src);
+    if (cached?.complete) { img.src = cached.src; img.alt = label || ''; return; }
+    preload(src).then(im => {
+      if (!im) { img.src = src; img.alt = label || ''; return; }
+      if (items[i]?.src === src) { img.src = im.src; img.alt = label || ''; }
+    });
+  }
   function render(){
     const it = items[i]; if (!it) return;
-    img.src = it.src;
-    img.alt = it.label || '';
+    setImage(it.src, it.label);
+    preloadNeighbors(i);
   }
-  function next(n){ i = (i + n + items.length) % items.length; render(); }
+  function next(n){
+    const total = items.length;
+    i = (i + n + total) % total;
+    render();
+  }
 
   left?.addEventListener('click',  () => next(-1));
   right?.addEventListener('click', () => next(+1));
@@ -186,12 +322,30 @@ const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
     });
   }
 
-  // show on activation (and render if already entered)
+  // ---- ACTIVATION ----
   const targetSel = host.getAttribute('data-target') || '#enter-stage';
   const target = document.querySelector(targetSel);
   const turnOn = () => { host.classList.add('is-on'); render(); };
 
   if (target?.getAttribute('data-entered') === 'true') turnOn();
   window.addEventListener('enter:activated', turnOn, { passive:true });
+
+  // ---- ESC to close & restore button ----
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      host.classList.remove('is-on');
+      target?.removeAttribute('data-entered');
+      const btnWrap = document.querySelector('.enter-wrap');
+      if (btnWrap) btnWrap.style.display = '';
+    }
+  }, { passive:true });
+
+  // ---- eager warm-up for first view ----
+  if (doPreload) {
+    preloadIdx(0).then(() => { if (host.classList.contains('is-on')) render(); });
+    preloadNeighbors(0);
+    const preloadRest = () => { for (let k = 3; k < items.length; k++) preloadIdx(k); };
+    (window.requestIdleCallback ? requestIdleCallback(preloadRest, { timeout: 1500 }) : setTimeout(preloadRest, 300));
+  }
 })();
 </script>
