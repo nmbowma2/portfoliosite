@@ -1,92 +1,154 @@
 ---
-export interface Item { src: string | { src: string }; href: string; label?: string }
+export interface Item { src: string | { src: string }; label?: string; href?: string }
+
 export interface Props {
   items?: Item[];
-  targetSelector?: string;         // default "#enter-stage"
+  targetSelector?: string;   // section to listen to (default "#enter-stage")
+  /* Position controls (tweak these in index.astro) */
+  top?: string;              // e.g. "auto" or "20%"
+  bottom?: string;           // e.g. "96px"
+  left?: string;             // e.g. "50%"
+  right?: string;            // e.g. "auto"
+  centerX?: boolean;         // default true (left:50% + translateX(-50%))
+  centerY?: boolean;         // default false
+  offsetX?: string;          // CSS length/percent, extra nudge on X (default "0")
+  offsetY?: string;          // CSS length/percent, extra nudge on Y (default "0")
+  z?: number;                // stacking above overlay (default 60)
+  maxWidth?: string;         // picture max width (default "min(92vw, 960px)")
   leftArrow?: string | { src: string };
   rightArrow?: string | { src: string };
+  navigateOnClick?: boolean; // click picture to navigate (same tab)
   class?: string;
 }
+
 const {
   items = [],
   targetSelector = "#enter-stage",
+  top = "auto",
+  bottom = "96px",
+  left = "50%",
+  right = "auto",
+  centerX = true,
+  centerY = false,
+  offsetX = "0",
+  offsetY = "0",
+  z = 60,
+  maxWidth = "min(92vw, 960px)",
   leftArrow,
   rightArrow,
+  navigateOnClick = false,
   class: className = "",
 } = Astro.props;
 
-const url = (x: any) => typeof x === "string" ? x : x?.src;
-const normalized = items.map(it => ({ src: url(it.src), href: it.href, label: it.label || "" }));
+const toUrl = (x: any) => typeof x === "string" ? x : x?.src;
+const normalized = items.map(it => ({ src: toUrl(it.src), label: it.label || "", href: it.href || "" }));
+const lUrl = leftArrow  ? toUrl(leftArrow)  : null;
+const rUrl = rightArrow ? toUrl(rightArrow) : null;
+
+const tx = `${centerX ? "-50%" : "0"} + ${offsetX}`;
+const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
 ---
 
 <style>
-  .carousel-host {
-    position:absolute; inset:0; z-index:60;
-    display:grid; place-items:center;
+  .carousel-host{
+    position:absolute;
     opacity:0; pointer-events:none;
     transition: opacity 200ms ease;
   }
-  .carousel-host.is-on { opacity:1; pointer-events:auto; }
+  .carousel-host.is-on{ opacity:1; pointer-events:auto; }
 
-  .carousel { position:relative; width:min(92vw, 960px); display:flex; align-items:center; gap:16px; }
-  .slide { position:relative; width:100%; aspect-ratio: 16 / 9; border-radius:12px; overflow:hidden; background:#0f0f10; box-shadow:0 10px 28px rgba(0,0,0,.35); }
-  .slide a, .slide img { display:block; width:100%; height:100%; object-fit:cover; }
+  .shell{ width: var(--maxw); }
 
-  .nav { -webkit-tap-highlight-color: transparent; position:absolute; top:50%; transform:translateY(-50%); background:transparent; border:0; padding:0; cursor:pointer;
-         width:56px; height:56px; border-radius:9999px; display:grid; place-items:center; filter: brightness(var(--b,1)); transform-origin:center; transform: scale(var(--s,1));
-         transition: filter 120ms ease, transform 120ms ease; }
-  .nav:hover  { --b:.9; }
-  .nav:active { --b:.8; --s:1.05; }
-  .nav img { width:34px; height:auto; display:block; pointer-events:none; }
-  .nav.left  { left:-8px; }
-  .nav.right { right:-8px; }
+  .frame{
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #0f0f10;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 28px rgba(0,0,0,.35);
+  }
+  .frame img{ display:block; width:100%; height:100%; object-fit:cover; user-select:none; -webkit-user-drag:none; }
+
+  /* Arrows row: 10% lower than the picture, spaced 10% apart */
+  .nav-row{ display:flex; align-items:center; justify-content:center; gap:10%; margin-top:10%; }
+
+  .nav{
+    -webkit-tap-highlight-color: transparent;
+    display:grid; place-items:center;
+    width:56px; height:56px; border-radius:9999px; border:0; background:transparent; cursor:pointer;
+    filter: brightness(var(--b,1)); transform: scale(var(--s,1));
+    transition: filter 120ms ease, transform 120ms ease, opacity 180ms ease;
+  }
+  .nav:hover  { --b:.92; }
+  .nav:active { --b:.85; --s:1.05; }
+  .nav img{ width:34px; height:auto; display:block; pointer-events:none; }
+  .nav.left  img{ transform: rotate(90deg); }
+  .nav.right img{ transform: rotate(-90deg); }
 
   @media (max-width: 640px){ .nav{ width:44px; height:44px; } .nav img{ width:28px; } }
 </style>
 
-<div class={`carousel-host ${className}`} data-target={targetSelector} data-items={JSON.stringify(normalized)}>
-  <div class="carousel">
-    <button class="nav left" type="button" aria-label="Previous"><span aria-hidden="true" style="font-size:28px;line-height:1">‹</span></button>
-    <div class="slide"><a id="cc-link" href="#" aria-label="Open"></a></div>
-    <button class="nav right" type="button" aria-label="Next"><span aria-hidden="true" style="font-size:28px;line-height:1">›</span></button>
+<div
+  class={`carousel-host ${className}`}
+  data-target={targetSelector}
+  data-items={JSON.stringify(normalized)}
+  data-nav={navigateOnClick ? "1" : "0"}
+  style={`
+    z-index:${z};
+    top:${top}; bottom:${bottom}; left:${left}; right:${right};
+    transform: translate(calc(${tx}), calc(${ty}));
+    --maxw:${maxWidth};
+  `}
+>
+  <div class="shell">
+    <div class="frame"><img id="cc-img" alt="" /></div>
+    <div class="nav-row">
+      <button class="nav left"  type="button" aria-label="Previous">{lUrl ? <img src={lUrl} alt="" /> : <span aria-hidden="true" style="font-size:28px;line-height:1">‹</span>}</button>
+      <button class="nav right" type="button" aria-label="Next">{rUrl ? <img src={rUrl} alt="" /> : <span aria-hidden="true" style="font-size:28px;line-height:1">›</span>}</button>
+    </div>
   </div>
 </div>
 
 <script is:inline>
 (() => {
-  const host  = document.currentScript?.previousElementSibling;
+  const host = document.currentScript?.previousElementSibling;
   if (!host) return;
 
-  const itemsAttr = host.getAttribute('data-items') || '[]';
   let items = [];
-  try { items = JSON.parse(itemsAttr); } catch {}
+  try { items = JSON.parse(host.getAttribute('data-items') || '[]'); } catch {}
   if (!items.length) return;
 
-  const link  = host.querySelector('#cc-link');
+  const img   = host.querySelector('#cc-img');
   const left  = host.querySelector('.nav.left');
   const right = host.querySelector('.nav.right');
+  const navGo = host.getAttribute('data-nav') === '1';
 
   let i = 0;
   function render(){
     const it = items[i]; if (!it) return;
-    link.href = it.href;
-    link.innerHTML = `<img src="${it.src}" alt="${it.label || ''}" loading="eager" decoding="async">`;
-    link.setAttribute('aria-label', it.label ? `Open ${it.label}` : 'Open');
+    img.src = it.src;
+    img.alt = it.label || '';
+  }
+  function next(n){ i = (i + n + items.length) % items.length; render(); }
+
+  left?.addEventListener('click',  () => next(-1));
+  right?.addEventListener('click', () => next(+1));
+
+  if (navGo){
+    img.style.cursor = 'pointer';
+    img.addEventListener('click', () => {
+      const href = items[i]?.href;
+      if (href) window.location.href = href;
+    });
   }
 
-  left?.addEventListener('click', () => { i = (i - 1 + items.length) % items.length; render(); });
-  right?.addEventListener('click', () => { i = (i + 1) % items.length; render(); });
-
-  // Turn on immediately if already "entered"
+  // Turn on when hold completes (and also render if already entered)
   const targetSel = host.getAttribute('data-target') || '#enter-stage';
   const target = document.querySelector(targetSel);
   const turnOn = () => { host.classList.add('is-on'); render(); };
 
   if (target?.getAttribute('data-entered') === 'true') turnOn();
-  window.addEventListener('enter:activated', (e) => {
-    if (!target) return;
-    // only react if event targets the same section
-    turnOn();
-  }, { passive:true });
+  window.addEventListener('enter:activated', turnOn, { passive:true });
 })();
 </script>

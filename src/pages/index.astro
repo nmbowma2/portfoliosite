@@ -19,6 +19,7 @@ import opt2 from "../assets/photos/music.png"
 import opt3 from "../assets/photos/voicerecordings.jpg"
 import rightIcon from "../assets/photos/lock.png"
 import arrow from "../assets/photos/arrow_white.png"
+import arrowblack from "../assets/photos/arrow_black.png"
 
 
 
@@ -81,26 +82,42 @@ const items = [
   <img
     src={overlay.src}
     alt=""
-    aria-hidden="true"
-    class="absolute inset-0 w-full h-full object-fill pointer-events-none origin-top"
+    class="overlay-img absolute inset-0 w-full h-full object-fill origin-top"
     style="transform: scale(0.90, 1.7);"
   />
+
+  <!-- Hold-to-activate button; hides itself and fades the overlay on success -->
   <HoldEnterButton
-    durationMs={5000}
+    durationMs={1000}
     targetSelector="#enter-stage"
     label="ENTER"
-    icon={rightIcon}      
-    iconWidth="14px"
+    strokeRadius = {10}
     hideOnComplete={true}
+    icon = {rightIcon}
+    strokeStart="bottom-center"
   />
 
+  <!-- Carousel: appears above the old button, over the overlay (z-index 60) -->
   <ChoiceCarousel
     targetSelector="#enter-stage"
     items={items}
-    class="px-4"
-    leftArrow={arrow}
-    rightArrow={arrow}
+    bottom="96px"                
+    maxWidth="min(92vw, 960px)"
+    leftArrow={arrowblack}
+    rightArrow={arrowblack}
+    navigateOnClick={false}   
+    z ={60}
+    top="auto"
+    bottom="-20%"
+    left="25%"
+    right="auto"
+    centerX={true}
+    centerY={false}
+    offsetX="0"
+    offsetY="0"
+    maxWidth="min(92vw, 960px)"   
   />
+
 </section>
 
 <ScrollSpacer size="50vh" />  
