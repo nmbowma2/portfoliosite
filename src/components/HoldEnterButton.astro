@@ -111,7 +111,7 @@ const iconUrl = icon ? (typeof icon === "string" ? icon : icon.src) : null;
       // bottom-center along the clockwise path starting at the top-left flat-start
       // path goes: top flat -> TR arc -> right flat -> BR arc -> bottom flat (right->left)
       // we want halfway across the bottom flat: add flatTop + qArc + flatSide + qArc + (flatBottom/2)
-      offset = flatTop + qArc + flatSide + qArc + (flatTop / 2);
+      offset = 0.5* flatTop + 2 * qArc + flatSide
     }
 
     rect.style.strokeDashoffset = String(offset);

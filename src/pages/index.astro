@@ -98,24 +98,32 @@ const items = [
   />
 
   <!-- Carousel: appears above the old button, over the overlay (z-index 60) -->
+
   <ChoiceCarousel
     targetSelector="#enter-stage"
     items={items}
-    bottom="96px"                
-    maxWidth="min(92vw, 960px)"
     leftArrow={arrowblack}
     rightArrow={arrowblack}
-    navigateOnClick={false}   
-    z ={60}
-    top="auto"
-    bottom="-20%"
-    left="25%"
-    right="auto"
-    centerX={true}
-    centerY={false}
-    offsetX="0"
+
+    z={60}
+    bottom="-15%"      
+    left="25%"          
+    centerX={true}      
+    offsetX="500"
     offsetY="0"
-    maxWidth="min(92vw, 960px)"   
+    frameMaxWidth="min(92vw, 960px)"
+    frameAspect="16 / 9"
+    frameRadius={12}
+    frameScale={.65}      
+
+
+    leftX="-32%" leftY="600%" leftScale={6.0}
+    rightX="52%" rightY="600%" rightScale={6.0}
+
+    arrowButtonSize="56px"
+    arrowIconWidth="34px"
+
+    navigateOnClick={false} 
   />
 
 </section>

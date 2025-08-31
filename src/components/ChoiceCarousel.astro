@@ -3,39 +3,55 @@ export interface Item { src: string | { src: string }; label?: string; href?: st
 
 export interface Props {
   items?: Item[];
-  targetSelector?: string;   // section to listen to (default "#enter-stage")
-  /* Position controls (tweak these in index.astro) */
-  top?: string;              // e.g. "auto" or "20%"
-  bottom?: string;           // e.g. "96px"
-  left?: string;             // e.g. "50%"
-  right?: string;            // e.g. "auto"
-  centerX?: boolean;         // default true (left:50% + translateX(-50%))
-  centerY?: boolean;         // default false
-  offsetX?: string;          // CSS length/percent, extra nudge on X (default "0")
-  offsetY?: string;          // CSS length/percent, extra nudge on Y (default "0")
-  z?: number;                // stacking above overlay (default 60)
-  maxWidth?: string;         // picture max width (default "min(92vw, 960px)")
+  targetSelector?: string;
+
+  /* Wrapper position (relative to the section) */
+  top?: string; bottom?: string; left?: string; right?: string;
+  centerX?: boolean; centerY?: boolean;
+  offsetX?: string;  offsetY?: string;
+  z?: number;
+
+  /* Frame (image wrapper) sizing */
+  frameMaxWidth?: string;   // e.g. "min(92vw, 960px)"
+  frameAspect?: string;     // e.g. "16 / 9"
+  frameRadius?: number;     // px radius for rounded corners
+  frameScale?: number;      // overall scale of the frame (multiplier)
+
+  /* Arrow art and controls */
   leftArrow?: string | { src: string };
   rightArrow?: string | { src: string };
-  navigateOnClick?: boolean; // click picture to navigate (same tab)
+
+  /* per-arrow absolute positioning (relative to the FRAME center) */
+  leftX?: string;  leftY?: string;   // CSS length/%, applied from frame center
+  rightX?: string; rightY?: string;
+  leftScale?: number;  rightScale?: number; // scale factors
+  arrowButtonSize?: string;                 // button hit area (e.g. "56px")
+  arrowIconWidth?: string;                  // icon width inside button (e.g. "34px")
+
+  navigateOnClick?: boolean;
   class?: string;
 }
 
 const {
   items = [],
   targetSelector = "#enter-stage",
-  top = "auto",
-  bottom = "96px",
-  left = "50%",
-  right = "auto",
-  centerX = true,
-  centerY = false,
-  offsetX = "0",
-  offsetY = "0",
-  z = 60,
-  maxWidth = "min(92vw, 960px)",
-  leftArrow,
-  rightArrow,
+
+  top = "auto", bottom = "96px", left = "50%", right = "auto",
+  centerX = true, centerY = false, offsetX = "0", offsetY = "0", z = 60,
+
+  frameMaxWidth = "min(92vw, 960px)",
+  frameAspect = "16 / 9",
+  frameRadius = 12,
+  frameScale = 1,
+
+  leftArrow, rightArrow,
+
+  leftX = "-40%",  leftY = "60%",
+  rightX = "40%",  rightY = "60%",
+  leftScale = 1,   rightScale = 1,
+  arrowButtonSize = "56px",
+  arrowIconWidth = "34px",
+
   navigateOnClick = false,
   class: className = "",
 } = Astro.props;
@@ -57,36 +73,51 @@ const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
   }
   .carousel-host.is-on{ opacity:1; pointer-events:auto; }
 
-  .shell{ width: var(--maxw); }
+  .shell{ position:relative; width: var(--frameW); }
 
+  
   .frame{
     position: relative;
     width: 100%;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: var(--aspect);
+    /* allow arrows to extend outside the frame bounds */
+    overflow: visible;
+    transform: scale(var(--frameScale));
+    transform-origin: center;
+  }
+  /* new: clip only the image, not the arrows */
+  .mask{
+    position: absolute; inset: 0;
     background: #0f0f10;
-    border-radius: 12px;
+    border-radius: var(--radius);
     overflow: hidden;
     box-shadow: 0 10px 28px rgba(0,0,0,.35);
   }
-  .frame img{ display:block; width:100%; height:100%; object-fit:cover; user-select:none; -webkit-user-drag:none; }
-
-  /* Arrows row: 10% lower than the picture, spaced 10% apart */
-  .nav-row{ display:flex; align-items:center; justify-content:center; gap:10%; margin-top:10%; }
-
+  .mask img{
+    display:block; width:100%; height:100%;
+    object-fit:cover; user-select:none; -webkit-user-drag:none;
+  }
+  /* Arrows absolutely over the FRAME, from its center */
   .nav{
     -webkit-tap-highlight-color: transparent;
+    position:absolute; left:50%; top:50%;
+    width: var(--btnSize); height: var(--btnSize);
+    margin:0; padding:0; border:0; border-radius:9999px; background:transparent; cursor:pointer;
     display:grid; place-items:center;
-    width:56px; height:56px; border-radius:9999px; border:0; background:transparent; cursor:pointer;
-    filter: brightness(var(--b,1)); transform: scale(var(--s,1));
+    transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(var(--s));
+    filter: brightness(var(--b,1));
     transition: filter 120ms ease, transform 120ms ease, opacity 180ms ease;
   }
   .nav:hover  { --b:.92; }
-  .nav:active { --b:.85; --s:1.05; }
-  .nav img{ width:34px; height:auto; display:block; pointer-events:none; }
+  .nav:active { --b:.85; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(calc(var(--s) * 1.05)); }
+  .nav img{ width: var(--iconW); height:auto; display:block; pointer-events:none; }
   .nav.left  img{ transform: rotate(90deg); }
   .nav.right img{ transform: rotate(-90deg); }
 
-  @media (max-width: 640px){ .nav{ width:44px; height:44px; } .nav img{ width:28px; } }
+  @media (max-width: 640px){
+    .nav{ --btnSize:44px; }
+    .nav img{ --iconW:28px; }
+  }
 </style>
 
 <div
@@ -98,14 +129,26 @@ const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
     z-index:${z};
     top:${top}; bottom:${bottom}; left:${left}; right:${right};
     transform: translate(calc(${tx}), calc(${ty}));
-    --maxw:${maxWidth};
+    --frameW:${frameMaxWidth};
+    --aspect:${frameAspect};
+    --radius:${frameRadius}px;
+    --frameScale:${frameScale};
+    --btnSize:${arrowButtonSize};
+    --iconW:${arrowIconWidth};
   `}
 >
   <div class="shell">
-    <div class="frame"><img id="cc-img" alt="" /></div>
-    <div class="nav-row">
-      <button class="nav left"  type="button" aria-label="Previous">{lUrl ? <img src={lUrl} alt="" /> : <span aria-hidden="true" style="font-size:28px;line-height:1">‹</span>}</button>
-      <button class="nav right" type="button" aria-label="Next">{rUrl ? <img src={rUrl} alt="" /> : <span aria-hidden="true" style="font-size:28px;line-height:1">›</span>}</button>
+    <div class="frame">
+      <div class="mask">
+        <img id="cc-img" alt="" />
+      </div>
+      <!-- arrows positioned relative to FRAME center -->
+      <button class="nav left"  type="button" aria-label="Previous" style={`--x:${leftX};  --y:${leftY};  --s:${leftScale};`}>
+        {lUrl ? <img src={lUrl} alt="" /> : <span aria-hidden="true" style="font-size:28px;line-height:1">‹</span>}
+      </button>
+      <button class="nav right" type="button" aria-label="Next"     style={`--x:${rightX}; --y:${rightY}; --s:${rightScale};`}>
+        {rUrl ? <img src={rUrl} alt="" /> : <span aria-hidden="true" style="font-size:28px;line-height:1">›</span>}
+      </button>
     </div>
   </div>
 </div>
@@ -143,7 +186,7 @@ const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
     });
   }
 
-  // Turn on when hold completes (and also render if already entered)
+  // show on activation (and render if already entered)
   const targetSel = host.getAttribute('data-target') || '#enter-stage';
   const target = document.querySelector(targetSel);
   const turnOn = () => { host.classList.add('is-on'); render(); };
