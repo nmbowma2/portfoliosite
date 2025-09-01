@@ -1,10 +1,9 @@
 ---
-// page.astro
 import Base from "../layouts/Base.astro";
 import TopoDots from "../components/TopoDots.astro";
 import FiveImageSequencer from "../components/FiveImageSequencer.astro";
-import BottomArrow from "../components/BottomArrow.astro"
-import ScrollSpacer from "../components/ScrollSpacer.astro"
+import BottomArrow from "../components/BottomArrow.astro";
+import ScrollSpacer from "../components/ScrollSpacer.astro";
 import HoldEnterButton from "../components/HoldEnterButton.astro";
 import ChoiceCarousel from "../components/ChoiceCarousel.astro";
 
@@ -13,25 +12,30 @@ import img2 from "../assets/photos/font_2.png";
 import img3 from "../assets/photos/font_3.png";
 import img4 from "../assets/photos/font_4.png";
 import img5 from "../assets/photos/font_5.png";
-import overlay1 from "../assets/photos/tv overlay_2.gif"
-import overlay2 from "../assets/photos/tv overlay.png"
-import opt1 from "../assets/photos/filefolder.avif"
-import opt2 from "../assets/photos/music.png"
-import opt3 from "../assets/photos/voicerecordings.jpg"
-import rightIcon from "../assets/photos/lock.png"
-import arrow from "../assets/photos/arrow_white.png"
-import arrowblack from "../assets/photos/arrow_black.png"
+import overlay1 from "../assets/photos/tv overlay_2.gif";
+import overlay2 from "../assets/photos/tv overlay.png";
+import opt1 from "../assets/photos/filefolder.avif";
+import opt2 from "../assets/photos/music.png";
+import opt3 from "../assets/photos/voicerecordings.jpg";
+import rightIcon from "../assets/photos/lock.png";
+import arrowblack from "../assets/photos/arrow_white.png";
+
+/* overlay transform (applies to both overlay image and the slot) */
 const overlayScaleX = 0.9;
 const overlayScaleY = 1.7;
-const overlayOffsetY = `${(overlayScaleY - 1) * 50}%`;
 
-const screenLeft   = '13.25%';   // <-- tune
-const screenTop    = '252%';   // <-- tune
-const screenWidth  = '73%';   // <-- tune
-const screenHeight = '64%';   // <-- tune
-const screenAspect = '4 / 3'; // adjust if your screen is different
+/* TV screen slot (calibrate these 4) */
+const screenLeft   = '34.5%';
+const screenTop    = '21%';
+const screenWidth  = '30%';
+const screenHeight = '40%';
 
-
+/* carousel items */
+const items = [
+  { src: opt1.src, href: "/projects",   label: "Projects" },
+  { src: opt2.src, href: "/music",      label: "Music"    },
+  { src: opt3.src, href: "/voicememos", label: "Voice Memos" },
+];
 const sources = [img1, img2, img3, img4, img5];
 const seqConfig = [
   { x: 0, y: 0, baseScale: 1 },
@@ -40,15 +44,10 @@ const seqConfig = [
   { x: 0, y: 0, baseScale: 1 },
   { x: 0, y: 0, baseScale: 1 },
 ];
-const items = [
-  { src: opt1.src, href: "/projects", label: "Projects" },
-  { src: opt2.src, href: "/music",    label: "Music"    },
-  { src: opt3.src, href: "/voicememos",      label: "voicememos"      },
-];
 ---
 
 <Base title="portfoliov1" description="projects">
-  <section class="relative h-[120vh] px-4 md:px-8 lg:px-12 py-12">
+  <section class="relative h-[130vh] px-4 md:px-8 lg:px-12 py-12">
     <TopoDots
       spacing={24.5}
       amp={14}
@@ -77,8 +76,8 @@ const items = [
     <BottomArrow
       amp="10px"
       period="1.4s"
-      scale={2.25}
-      bottom="185px"
+      scale={2.75}
+      bottom="25%"
       z={60}
       width="64px"
       hideAtPx={500}    
@@ -86,55 +85,51 @@ const items = [
     />
   </section>
 </Base>
+
 <ScrollSpacer size="120vh" />
 
 <section id="enter-stage" class="relative h-[60vh]">
-
-  <!-- Group BOTH overlay + carousel under the SAME transform -->
-  <div class="overlay-group absolute inset-0 origin-top"
-       style={`transform: scale(${overlayScaleX}, ${overlayScaleY});`}>
-
-    <!-- The overlay PNG -->
+  <!-- Co-transform overlay and slot so alignment never drifts -->
+  <div class="overlay-group absolute inset-0 origin-top" style={`transform: scale(${overlayScaleX}, ${overlayScaleY});`}>
     <img
-      src={overlay2.src}
+      src={overlay1.src /* or overlayPng */}
       alt=""
-      class="absolute inset-0 w-full h-full object-fill pointer-events-none"
+      class="absolute inset-0 w-full h-full object-fill pointer-events-none z-0"
     />
 
-    <!-- The TV screen “slot” (positioned in %; no clipping) -->
-    <div class="tv-screen absolute"
-         style={`left:${screenLeft}; top:${screenTop}; width:${screenWidth}; height:${screenHeight};`}>
+    <!-- Your calibrated TV screen slot (clip if you want nothing outside) -->
+    <div class="tv-screen absolute z-[1]"
+         style={`left:${screenLeft}; top:${screenTop}; width:${screenWidth}; height:${screenHeight}; `}>
 
-      <!-- Center the carousel inside the slot -->
       <ChoiceCarousel
+        class="fill-slot-center"
         targetSelector="#enter-stage"
         items={items}
         leftArrow={arrowblack}
         rightArrow={arrowblack}
 
-        top="50%" left="50%" centerX={true} centerY={true}
+        top="0" left="0" right="0" bottom="0"
+        centerX={false} centerY={false}
         offsetX="0" offsetY="0"
 
+        mode="fill"
         frameMaxWidth="100%"
-        frameAspect={screenAspect}
         frameRadius={12}
-        frameScale={1}
 
-        leftX="-56%"  leftY="0%"  leftScale={1.05}
-        rightX="56%"  rightY="0%"  rightScale={1.05}
+        leftX="-106%"  leftY="345%"  leftScale={5.05}
+        rightX="106%"  rightY="350%"  rightScale={5.05}
         arrowButtonSize="56px"
         arrowIconWidth="34px"
 
         navigateOnClick={false}
+        enablePreload={true}
       />
     </div>
   </div>
 
-  <!-- Hold-to-activate (tell it to fade the WHOLE overlay group) -->
   <HoldEnterButton
-    durationMs={3000}
+    durationMs={1000}
     targetSelector="#enter-stage"
-    overlaySelector=".overlay-group"
     label="ENTER"
     strokeRadius={10}
     hideOnComplete={true}
@@ -143,4 +138,9 @@ const items = [
   />
 </section>
 
-<ScrollSpacer size="50vh" />  
+<ScrollSpacer size="50vh" />
+
+<style is:global>
+  /* Simple centering helper; no sizing overrides */
+  .fill-slot-center{ display:grid; place-items:center; height:100%; }
+</style>

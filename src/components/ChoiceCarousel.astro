@@ -1,56 +1,55 @@
 ---
-export interface Item { src: string | { src: string }; label?: string; href?: string }
+export interface Item {
+  src: string | { src: string };
+  label?: string;
+  href?: string;
+  /** optional per-item proportional overrides (used only in proportional mode) */
+  scale?: number;
+  posX?: string; // e.g. "50%", "40%"
+  posY?: string; // e.g. "50%", "55%"
+}
 
 export interface Props {
   items?: Item[];
   targetSelector?: string;
 
-  /* Host (wrapper) position - desktop */
+  /** Host positioning (relative to where you place the component) */
   top?: string; bottom?: string; left?: string; right?: string;
   centerX?: boolean; centerY?: boolean;
-  offsetX?: string;  offsetY?: string;
+  offsetX?: string; offsetY?: string;
   z?: number;
 
-  /* Host (wrapper) position - mobile overrides */
-  topSm?: string; bottomSm?: string; leftSm?: string; rightSm?: string;
-  centerXSm?: boolean; centerYSm?: boolean;
-  offsetXSm?: string;  offsetYSm?: string;
+  /** Frame sizing / look */
+  frameMaxWidth?: string;           // e.g. "min(92vw, 960px)" or "100%"
+  frameAspect?: string;             // used in proportional mode
+  frameRadius?: number;             // px
+  frameScale?: number;              // used in proportional mode
 
-  /* Frame sizing - desktop */
-  frameMaxWidth?: string;   // e.g. "min(92vw, 960px)"
-  frameAspect?: string;     // e.g. "16 / 9"
-  frameRadius?: number;     // px
-  frameScale?: number;      // multiplier
-
-  /* Frame sizing - mobile overrides */
-  frameMaxWidthSm?: string;
-  frameAspectSm?: string;
-  frameRadiusSm?: number;
-  frameScaleSm?: number;
-
-  /* Arrow art */
+  /** Arrow art & placement (relative to frame center) */
   leftArrow?: string | { src: string };
   rightArrow?: string | { src: string };
+  leftX?: string;  leftY?: string;  leftScale?: number;
+  rightX?: string; rightY?: string; rightScale?: number;
+  arrowButtonSize?: string;         // e.g. "56px"
+  arrowIconWidth?: string;          // e.g. "34px"
 
-  /* Arrow placement - desktop (relative to frame center) */
-  leftX?: string;  leftY?: string;
-  rightX?: string; rightY?: string;
-  leftScale?: number;  rightScale?: number;
-
-  /* Arrow placement - mobile overrides */
-  leftXSm?: string;  leftYSm?: string;
-  rightXSm?: string; rightYSm?: string;
-  leftScaleSm?: number;  rightScaleSm?: number;
-
-  /* Arrow sizes - desktop & mobile */
-  arrowButtonSize?: string;                 // hit area, e.g. "56px"
-  arrowIconWidth?: string;                  // icon width, e.g. "34px"
-  arrowButtonSizeSm?: string;
-  arrowIconWidthSm?: string;
-
-  /* Behavior */
+  /** Behavior */
   navigateOnClick?: boolean;
-  enablePreload?: boolean;                  // optional: default on
+  enablePreload?: boolean;
+
+  /**
+   * FILL MODE:
+   * "fill"         -> frame fills the slot exactly (ignores aspect/scale; simplest autosize)
+   * "proportional" -> frame keeps aspect; use imageFit/imageScale/pos to tune
+   */
+  mode?: "fill" | "proportional";
+
+  /** Proportional image controls (used only when mode="proportional") */
+  imageFit?: "cover" | "contain";
+  imageScale?: number;
+  imagePosX?: string;
+  imagePosY?: string;
+
   class?: string;
 }
 
@@ -58,59 +57,48 @@ const {
   items = [],
   targetSelector = "#enter-stage",
 
-  // Host desktop
-  top = "auto", bottom = "96px", left = "50%", right = "auto",
-  centerX = true, centerY = false, offsetX = "0", offsetY = "0", z = 60,
+  top = "0", bottom = "0", left = "0", right = "0",
+  centerX = false, centerY = false,
+  offsetX = "0", offsetY = "0", z = 60,
 
-  // Host mobile (fallbacks to desktop)
-  topSm = top, bottomSm = bottom, leftSm = left, rightSm = right,
-  centerXSm = centerX, centerYSm = centerY, offsetXSm = offsetX, offsetYSm = offsetY,
-
-  // Frame desktop
-  frameMaxWidth = "min(92vw, 960px)",
+  frameMaxWidth = "100%",
   frameAspect = "16 / 9",
   frameRadius = 12,
   frameScale = 1,
 
-  // Frame mobile (fallbacks)
-  frameMaxWidthSm = frameMaxWidth,
-  frameAspectSm = frameAspect,
-  frameRadiusSm = frameRadius,
-  frameScaleSm = frameScale,
-
   leftArrow, rightArrow,
-
-  // Arrow desktop
-  leftX = "-40%",  leftY = "60%",
-  rightX = "40%",  rightY = "60%",
-  leftScale = 1,   rightScale = 1,
-
-  // Arrow mobile (fallbacks)
-  leftXSm = leftX,   leftYSm = leftY,
-  rightXSm = rightX, rightYSm = rightY,
-  leftScaleSm = leftScale, rightScaleSm = rightScale,
-
-  // Arrow sizes
+  leftX = "-56%",  leftY = "0%",   leftScale = 1.05,
+  rightX = "56%",  rightY = "0%",  rightScale = 1.05,
   arrowButtonSize = "56px",
   arrowIconWidth = "34px",
-  arrowButtonSizeSm = "44px",
-  arrowIconWidthSm = "28px",
 
   navigateOnClick = false,
   enablePreload = true,
+  mode = "fill",
+
+  imageFit = "cover",
+  imageScale = 1.02,        // tiny seam insurance; set 1 if you don’t want it
+  imagePosX = "50%",
+  imagePosY = "50%",
+
   class: className = "",
 } = Astro.props;
 
 const toUrl = (x: any) => typeof x === "string" ? x : x?.src;
-const normalized = items.map(it => ({ src: toUrl(it.src), label: it.label || "", href: it.href || "" }));
-const lUrl = leftArrow  ? toUrl(leftArrow)  : null;
+const normalized = items.map(it => ({
+  src: toUrl(it.src),
+  label: it.label || "",
+  href: it.href || "",
+  scale: it.scale,
+  posX: it.posX,
+  posY: it.posY,
+}));
+const lUrl = leftArrow ? toUrl(leftArrow) : null;
 const rUrl = rightArrow ? toUrl(rightArrow) : null;
 
-/* translate components for host */
+// translate center flags into a translate string
 const tx = `${centerX ? "-50%" : "0"} + ${offsetX}`;
 const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
-const txSm = `${centerXSm ? "-50%" : "0"} + ${offsetXSm}`;
-const tySm = `${centerYSm ? "-50%" : "0"} + ${offsetYSm}`;
 ---
 
 <style>
@@ -118,7 +106,6 @@ const tySm = `${centerYSm ? "-50%" : "0"} + ${offsetYSm}`;
     position:absolute;
     opacity:0; pointer-events:none;
     transition: opacity 200ms ease;
-    /* host positioning via CSS vars (desktop) */
     top: var(--host-top);
     bottom: var(--host-bottom);
     left: var(--host-left);
@@ -128,29 +115,43 @@ const tySm = `${centerYSm ? "-50%" : "0"} + ${offsetYSm}`;
   }
   .carousel-host.is-on{ opacity:1; pointer-events:auto; }
 
-  .shell{ position:relative; width: var(--frameW); }
+  .shell{ position:relative; width: var(--frameW); height: 100%; }
 
-  /* allow arrows to extend beyond the frame; clip image only via .mask */
+  /* FRAME: two modes */
   .frame{
     position: relative;
     width: 100%;
+  }
+  /* fill mode: frame matches slot exactly (no aspect/scale) */
+  .frame.fill{
+    height: 100%;
+  }
+  /* proportional mode: keep aspect & allow scale */
+  .frame.prop{
     aspect-ratio: var(--aspect);
     transform: scale(var(--frameScale));
     transform-origin: center;
   }
+
+  /* clipper with rounded corners, transparent background (no black box) */
   .mask{
     position: absolute; inset: 0;
-    background: #0f0f10;
     border-radius: var(--radius);
     overflow: hidden;
-    box-shadow: 0 10px 28px rgba(0,0,0,.35);
-  }
-  .mask img{
-    display:block; width:100%; height:100%;
-    object-fit:cover; user-select:none; -webkit-user-drag:none;
+    background: transparent;
+    box-shadow: none;
   }
 
-  /* Arrows absolutely over the FRAME, from its center */
+  /* the image obeys CSS vars (proportional controls only matter in proportional mode) */
+  .mask img{
+    display:block; width:100%; height:100%;
+    object-fit: var(--img-fit);
+    object-position: var(--img-pos-x) var(--img-pos-y);
+    transform: scale(var(--img-scale));
+    user-select:none; -webkit-user-drag:none;
+  }
+
+  /* arrows positioned from frame center */
   .nav{
     -webkit-tap-highlight-color: transparent;
     position:absolute; left:50%; top:50%;
@@ -159,31 +160,13 @@ const tySm = `${centerYSm ? "-50%" : "0"} + ${offsetYSm}`;
     display:grid; place-items:center;
     transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(var(--s));
     filter: brightness(var(--b,1));
-    transition: filter 120ms ease, transform 120ms ease, opacity 180ms ease;
+    transition: filter 120ms ease, transform 120ms ease;
   }
   .nav:hover  { --b:.92; }
   .nav:active { --b:.85; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(calc(var(--s) * 1.05)); }
   .nav img{ width: var(--iconW); height:auto; display:block; pointer-events:none; }
   .nav.left  img{ transform: rotate(90deg); }
   .nav.right img{ transform: rotate(-90deg); }
-
-  /* Mobile overrides at <= 640px */
-  @media (max-width: 640px){
-    .carousel-host{
-      top: var(--host-top-sm);
-      bottom: var(--host-bottom-sm);
-      left: var(--host-left-sm);
-      right: var(--host-right-sm);
-      transform: translate(calc(var(--host-tx-sm)), calc(var(--host-ty-sm)));
-    }
-    .shell{ width: var(--frameW-sm); }
-    .frame{ aspect-ratio: var(--aspect-sm); transform: scale(var(--frameScale-sm)); }
-    .mask{ border-radius: var(--radius-sm); }
-    .nav{ width: var(--btnSize-sm); height: var(--btnSize-sm); }
-    .nav img{ width: var(--iconW-sm); }
-    .nav.left  { --x: var(--x-sm); --y: var(--y-sm); --s: var(--s-sm); }
-    .nav.right { --x: var(--x-sm); --y: var(--y-sm); --s: var(--s-sm); }
-  }
 </style>
 
 <div
@@ -192,45 +175,45 @@ const tySm = `${centerYSm ? "-50%" : "0"} + ${offsetYSm}`;
   data-items={JSON.stringify(normalized)}
   data-nav={navigateOnClick ? "1" : "0"}
   data-preload={enablePreload ? "1" : "0"}
+  data-mode={mode}
   style={`
     --z:${z};
-    /* host vars (desktop + mobile) */
     --host-top:${top}; --host-bottom:${bottom}; --host-left:${left}; --host-right:${right};
-    --host-tx:${tx};  --host-ty:${ty};
-    --host-top-sm:${topSm}; --host-bottom-sm:${bottomSm}; --host-left-sm:${leftSm}; --host-right-sm:${rightSm};
-    --host-tx-sm:${txSm};  --host-ty-sm:${tySm};
-    /* frame vars */
-    --frameW:${frameMaxWidth};      --frameW-sm:${frameMaxWidthSm};
-    --aspect:${frameAspect};        --aspect-sm:${frameAspectSm};
-    --radius:${frameRadius}px;      --radius-sm:${frameRadiusSm}px;
-    --frameScale:${frameScale};     --frameScale-sm:${frameScaleSm};
-    /* arrow shared sizes */
-    --btnSize:${arrowButtonSize};   --btnSize-sm:${arrowButtonSizeSm};
-    --iconW:${arrowIconWidth};      --iconW-sm:${arrowIconWidthSm};
+    --host-tx:${tx};   --host-ty:${ty};
+    --frameW:${frameMaxWidth};
+    --aspect:${frameAspect};
+    --radius:${frameRadius}px;
+    --frameScale:${frameScale};
+    --btnSize:${arrowButtonSize};
+    --iconW:${arrowIconWidth};
+    --img-fit:${imageFit};
+    --img-scale:${imageScale};
+    --img-pos-x:${imagePosX};
+    --img-pos-y:${imagePosY};
   `}
 >
   <div class="shell">
-    <div class="frame">
+    <div class={`frame ${mode === "fill" ? "fill" : "prop"}`}>
       <div class="mask">
         <img id="cc-img" alt="" loading="eager" decoding="async" fetchpriority="high" />
       </div>
 
-      <!-- LEFT: desktop positions + mobile overrides via CSS vars -->
+      <!-- LEFT -->
       <button
         class="nav left"
         type="button"
         aria-label="Previous"
-        style={`--x:${leftX}; --y:${leftY}; --s:${leftScale}; --x-sm:${leftXSm}; --y-sm:${leftYSm}; --s-sm:${leftScaleSm};`}
+        style={`--x:${leftX}; --y:${leftY}; --s:${leftScale};`}
       >
         {lUrl ? <img src={lUrl} alt="" /> : <span aria-hidden="true" style="font-size:28px;line-height:1">‹</span>}
       </button>
 
-      <!-- RIGHT: desktop positions + mobile overrides via CSS vars -->
+      <!-- RIGHT -->
       <button
         class="nav right"
         type="button"
         aria-label="Next"
-        style={`--x:${rightX}; --y:${rightY}; --s:${rightScale}; --x-sm:${rightXSm}; --y-sm:${rightYSm}; --s-sm:${rightScaleSm};`}
+        style={`--x:${rightX}; --y:${rightY}; --s:${rightScale};`}
       >
         {rUrl ? <img src={rUrl} alt="" /> : <span aria-hidden="true" style="font-size:28px;line-height:1">›</span>}
       </button>
@@ -243,6 +226,7 @@ const tySm = `${centerYSm ? "-50%" : "0"} + ${offsetYSm}`;
   const host = document.currentScript?.previousElementSibling;
   if (!host) return;
 
+  // read items
   let items = [];
   try { items = JSON.parse(host.getAttribute('data-items') || '[]'); } catch {}
   if (!items.length) return;
@@ -252,64 +236,57 @@ const tySm = `${centerYSm ? "-50%" : "0"} + ${offsetYSm}`;
   const right = host.querySelector('.nav.right');
   const navGo = host.getAttribute('data-nav') === '1';
   const doPreload = host.getAttribute('data-preload') !== '0';
+  const mode = host.getAttribute('data-mode') || 'fill';
 
-  // ---- Optional: PRELOAD / DECODE cache for snappy nav ----
+  // PRELOAD
   const cache = new Map();
   const inflight = new Map();
-  function ensurePrefetchLink(src){
-    if (!src || document.head.querySelector(`link[rel="prefetch"][href="${src}"]`)) return;
-    const l = document.createElement('link');
-    l.rel = 'prefetch'; l.as = 'image'; l.href = src;
-    document.head.appendChild(l);
-  }
   function preload(src){
     if (!doPreload || !src) return Promise.resolve(null);
     if (cache.has(src)) return Promise.resolve(cache.get(src));
     if (inflight.has(src)) return inflight.get(src);
-    ensurePrefetchLink(src);
     const p = new Promise((resolve) => {
       const im = new Image();
       im.decoding = 'async';
       im.loading = 'eager';
       im.src = src;
-      const done = () => {
-        (im.decode?.() ?? Promise.resolve()).finally(() => { cache.set(src, im); resolve(im); });
-      };
+      const done = () => (im.decode?.() ?? Promise.resolve()).finally(() => { cache.set(src, im); resolve(im); });
       if (im.complete) done();
       else im.addEventListener('load', done, { once:true });
     }).finally(() => inflight.delete(src));
     inflight.set(src, p);
     return p;
   }
-  function preloadIdx(idx){
-    const s = items[idx]?.src; return preload(s);
-  }
   function preloadNeighbors(idx){
-    const n = items.length; if (!n) return;
-    preloadIdx((idx - 1 + n) % n);
-    preloadIdx((idx + 1) % n);
+    const n = items.length;
+    if (!n) return;
+    const prev = (idx - 1 + n) % n, next = (idx + 1) % n;
+    preload(items[prev]?.src); preload(items[next]?.src);
   }
 
-  // ---- RENDERING ----
+  // RENDER
   let i = 0;
-  function setImage(src, label){
+  function setImage(it){
+    const src = it?.src; if (!src) return;
+    // per-item proportional overrides (only meaningful in proportional mode):
+    if (mode === 'proportional') {
+      const scale = it.scale ?? (parseFloat(getComputedStyle(host).getPropertyValue('--img-scale')) || 1);
+      const posX  = it.posX  ?? (getComputedStyle(host).getPropertyValue('--img-pos-x') || '50%');
+      const posY  = it.posY  ?? (getComputedStyle(host).getPropertyValue('--img-pos-y') || '50%');
+
+      img.style.setProperty('--img-scale', String(scale));
+      img.style.setProperty('--img-pos-x', posX.trim());
+      img.style.setProperty('--img-pos-y', posY.trim());
+    }
     const cached = cache.get(src);
-    if (cached?.complete) { img.src = cached.src; img.alt = label || ''; return; }
+    if (cached?.complete) { img.src = cached.src; img.alt = it?.label || ''; return; }
     preload(src).then(im => {
-      if (!im) { img.src = src; img.alt = label || ''; return; }
-      if (items[i]?.src === src) { img.src = im.src; img.alt = label || ''; }
+      if (!im) { img.src = src; img.alt = it?.label || ''; return; }
+      if (items[i]?.src === src) { img.src = im.src; img.alt = it?.label || ''; }
     });
   }
-  function render(){
-    const it = items[i]; if (!it) return;
-    setImage(it.src, it.label);
-    preloadNeighbors(i);
-  }
-  function next(n){
-    const total = items.length;
-    i = (i + n + total) % total;
-    render();
-  }
+  function render(){ const it = items[i]; setImage(it); preloadNeighbors(i); }
+  function next(n){ i = (i + n + items.length) % items.length; render(); }
 
   left?.addEventListener('click',  () => next(-1));
   right?.addEventListener('click', () => next(+1));
@@ -322,15 +299,18 @@ const tySm = `${centerYSm ? "-50%" : "0"} + ${offsetYSm}`;
     });
   }
 
-  // ---- ACTIVATION ----
+  // ROBUST ACTIVATION
   const targetSel = host.getAttribute('data-target') || '#enter-stage';
   const target = document.querySelector(targetSel);
-  const turnOn = () => { host.classList.add('is-on'); render(); };
+  const turnOn = () => { if (!host.classList.contains('is-on')) { host.classList.add('is-on'); render(); } };
 
   if (target?.getAttribute('data-entered') === 'true') turnOn();
-  window.addEventListener('enter:activated', turnOn, { passive:true });
+  window.addEventListener('enter:activated', (e) => {
+    try { const sel = e?.detail?.selector; if (!sel || sel === targetSel) turnOn(); }
+    catch { turnOn(); }
+  }, { passive:true });
 
-  // ---- ESC to close & restore button ----
+  // ESC close (optional)
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       host.classList.remove('is-on');
@@ -340,12 +320,12 @@ const tySm = `${centerYSm ? "-50%" : "0"} + ${offsetYSm}`;
     }
   }, { passive:true });
 
-  // ---- eager warm-up for first view ----
+  // warm-up
   if (doPreload) {
-    preloadIdx(0).then(() => { if (host.classList.contains('is-on')) render(); });
+    preload(items[0]?.src).then(() => { if (host.classList.contains('is-on')) render(); });
     preloadNeighbors(0);
-    const preloadRest = () => { for (let k = 3; k < items.length; k++) preloadIdx(k); };
-    (window.requestIdleCallback ? requestIdleCallback(preloadRest, { timeout: 1500 }) : setTimeout(preloadRest, 300));
+    const rest = () => { for (let k = 2; k < items.length; k++) preload(items[k]?.src); };
+    (window.requestIdleCallback ? requestIdleCallback(rest, { timeout: 1500 }) : setTimeout(rest, 300));
   }
 })();
 </script>
