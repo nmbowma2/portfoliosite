@@ -14,11 +14,12 @@ import img4 from "../assets/photos/font_4.png";
 import img5 from "../assets/photos/font_5.png";
 import overlay1 from "../assets/photos/tv overlay_2.gif";
 import overlay2 from "../assets/photos/tv overlay.png";
-import opt1 from "../assets/photos/filefolder.avif";
+import opt1 from "../assets/photos/videos.png";
 import opt2 from "../assets/photos/music.png";
-import opt3 from "../assets/photos/voicerecordings.jpg";
+import opt3 from "../assets/photos/picture.png";
 import rightIcon from "../assets/photos/lock.png";
-import arrowblack from "../assets/photos/arrow_white.png";
+import bigarrow from "../assets/photos/bigarrow.png";
+
 
 /* overlay transform (applies to both overlay image and the slot) */
 const overlayScaleX = 0.9;
@@ -32,9 +33,9 @@ const screenHeight = '40%';
 
 /* carousel items */
 const items = [
-  { src: opt1.src, href: "/projects",   label: "Projects" },
-  { src: opt2.src, href: "/music",      label: "Music"    },
-  { src: opt3.src, href: "/voicememos", label: "Voice Memos" },
+  { src: opt1.src, href: "/videos",   label: "videos" },
+  { src: opt2.src, href: "/Music",      label: "Music"    },
+  { src: opt3.src, href: "/photos", label: "photos" },
 ];
 const sources = [img1, img2, img3, img4, img5];
 const seqConfig = [
@@ -92,7 +93,7 @@ const seqConfig = [
   <!-- Co-transform overlay and slot so alignment never drifts -->
   <div class="overlay-group absolute inset-0 origin-top" style={`transform: scale(${overlayScaleX}, ${overlayScaleY});`}>
     <img
-      src={overlay1.src /* or overlayPng */}
+      src={overlay2.src /* or overlayPng */}
       alt=""
       class="absolute inset-0 w-full h-full object-fill pointer-events-none z-0"
     />
@@ -105,8 +106,8 @@ const seqConfig = [
         class="fill-slot-center"
         targetSelector="#enter-stage"
         items={items}
-        leftArrow={arrowblack}
-        rightArrow={arrowblack}
+        leftArrow={bigarrow}
+        rightArrow={bigarrow}
 
         top="0" left="0" right="0" bottom="0"
         centerX={false} centerY={false}
@@ -115,9 +116,11 @@ const seqConfig = [
         mode="fill"
         frameMaxWidth="100%"
         frameRadius={12}
+        imageFit="contain"  
+        imageScale={1}     
 
-        leftX="-106%"  leftY="345%"  leftScale={5.05}
-        rightX="106%"  rightY="350%"  rightScale={5.05}
+        leftX="-126%"  leftY="341.5%"  leftScale={1.05}
+        rightX="126%"  rightY="340%"  rightScale={1.05}
         arrowButtonSize="56px"
         arrowIconWidth="34px"
 
@@ -128,7 +131,7 @@ const seqConfig = [
   </div>
 
   <HoldEnterButton
-    durationMs={1000}
+    durationMs={4000}
     targetSelector="#enter-stage"
     label="ENTER"
     strokeRadius={10}

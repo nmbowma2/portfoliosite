@@ -299,33 +299,79 @@ const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
     });
   }
 
-  // ROBUST ACTIVATION
-  const targetSel = host.getAttribute('data-target') || '#enter-stage';
-  const target = document.querySelector(targetSel);
-  const turnOn = () => { if (!host.classList.contains('is-on')) { host.classList.add('is-on'); render(); } };
+// ACTIVATION + ESC + WARM-UP (drop-in replacement)
+const targetSel = host.getAttribute('data-target') || '#enter-stage';
+const target = document.querySelector(targetSel);
 
-  if (target?.getAttribute('data-entered') === 'true') turnOn();
-  window.addEventListener('enter:activated', (e) => {
-    try { const sel = e?.detail?.selector; if (!sel || sel === targetSel) turnOn(); }
-    catch { turnOn(); }
-  }, { passive:true });
+function turnOn(){
+  if (host.classList.contains('is-on')) return;
+  host.classList.add('is-on');
+  render();
+}
 
-  // ESC close (optional)
-  window.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      host.classList.remove('is-on');
-      target?.removeAttribute('data-entered');
-      const btnWrap = document.querySelector('.enter-wrap');
-      if (btnWrap) btnWrap.style.display = '';
-    }
-  }, { passive:true });
+// 1) Immediate state (in case activation happened before mount)
+if (target?.getAttribute('data-entered') === 'true') turnOn();
 
-  // warm-up
-  if (doPreload) {
-    preload(items[0]?.src).then(() => { if (host.classList.contains('is-on')) render(); });
-    preloadNeighbors(0);
-    const rest = () => { for (let k = 2; k < items.length; k++) preload(items[k]?.src); };
-    (window.requestIdleCallback ? requestIdleCallback(rest, { timeout: 1500 }) : setTimeout(rest, 300));
+// 2) Custom event from HoldEnterButton
+window.addEventListener('enter:activated', (e) => {
+  const sel = e?.detail?.selector;
+  if (!sel || sel === targetSel) turnOn();
+}, { passive: true });
+
+// 3) Fallback: watch the target's attribute
+if (target){
+  const mo = new MutationObserver(() => {
+    if (target.getAttribute('data-entered') === 'true') turnOn();
+  });
+  mo.observe(target, { attributes: true, attributeFilter: ['data-entered'] });
+}
+
+// 4) ESC to close and fully restore the button
+window.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+
+  host.classList.remove('is-on');
+  target?.removeAttribute('data-entered');
+
+  const wrap = document.querySelector('.enter-wrap');
+  if (!wrap) return;
+  wrap.style.display = '';
+
+  const btn  = wrap.querySelector('.enter-btn');
+  const rect = wrap.querySelector('.enter-stroke');
+
+  if (btn){
+    btn.removeAttribute('aria-disabled');
+    btn.setAttribute('aria-pressed','false');
+    btn.style.opacity = '';
+    btn.style.removeProperty('--press');
   }
+
+  if (rect){
+    let total = 0;
+    try {
+      total = rect.getTotalLength();
+    } catch {
+      const W  = parseFloat(rect.getAttribute('width')  || '197');
+      const H  = parseFloat(rect.getAttribute('height') || '69');
+      const rx = parseFloat(wrap.getAttribute('data-rx') || '10');
+      const r  = Math.min(rx, Math.min(W, H) * 0.5);
+      total = 2 * (W + H - 2 * r) + 2 * Math.PI * r;
+    }
+    rect.style.opacity = '0';
+    rect.style.strokeDasharray = `0 ${total}`;
+  }
+}, { passive:true });
+
+// 5) Preload warm-up
+if (doPreload) {
+  preload(items[0]?.src).then(() => {
+    if (host.classList.contains('is-on')) render();
+  });
+  preloadNeighbors(0);
+  const rest = () => { for (let k = 2; k < items.length; k++) preload(items[k]?.src); };
+  (window.requestIdleCallback ? requestIdleCallback(rest, { timeout: 1500 }) : setTimeout(rest, 300));
+}
 })();
 </script>
+
