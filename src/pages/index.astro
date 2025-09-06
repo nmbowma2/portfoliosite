@@ -18,6 +18,7 @@ import rightIcon from "../assets/photos/lock.png";
 import opt4 from "../assets/photos/videos.png"
 import opt2 from "../assets/photos/music.png"
 import opt3 from "../assets/photos/picture.png"
+import bigarrow from "../assets/photos/arrow_white.png"
 
 const screenLeft   = '34.5%';
 const screenTop    = '21%';
@@ -42,9 +43,8 @@ const seqConfig = [
 ];
 ---
 <!-- Place this near the top of index.astro -->
-
 <Base title="portfoliov1" description="projects">
-  <section class="relative min-h-screen grid place-items-center min-h-screen">
+  <section class="relative h-[130vh] px-4 md:px-8 lg:px-12 py-12">
     <TopoDots
       spacing={24.5}
       amp={14}
@@ -62,53 +62,84 @@ const seqConfig = [
       chromaStrength={15.0}
     />
 
-    <div class="w-[90vw] aspect-[16/9]">
+    <div class="absolute inset-0 z-20 pointer-events-none translate-y-[20%] md:translate-y-[-11.8%]">
       <FiveImageSequencer
         sources={sources}
         fps={24}
         config={seqConfig}
+        class="w-full h-full"
       />
     </div>
-
-    <div
-      class="absolute z-30"
-      style={`left:${screenLeft}; top:${screenTop}; width:${screenWidth}; height:${screenHeight};`}
-    >
-      <div class="fill-slot-center">
-        <ChoiceCarousel
-          items={items}
-          targetSelector="#enter-stage"
-          top="0" bottom="0" left="0" right="0"
-          centerX={true} centerY={true}
-          offsetX="0" offsetY="0"
-          mode="fill"
-          frameMaxWidth="100%"
-          frameRadius={12}
-          imageFit="contain"
-          imageScale={1}
-          leftX="-126%"  leftY="341.5%"  leftScale={1.05}
-          rightX="126%"  rightY="340%"    rightScale={1.05}
-          arrowButtonSize="56px"
-          arrowIconWidth="34px"
-          navigateOnClick={false}
-          enablePreload={true}
-        />
-      </div>
-    </div>
-
-    <HoldEnterButton
-      durationMs={1250}
-      targetSelector="#enter-stage"
-      label="ENTER"
-      strokeRadius={10}
-      hideOnComplete={true}
-      icon={rightIcon}
-      strokeStart="bottom-center"
+    <BottomArrow
+      amp="10px"
+      period="1.4s"
+      scale={2.75}
+      bottom="3.5%"
+      z={60}
+      width="64px"
+      hideAtPx={500}    
+      fadeSpanPx={180}  
     />
   </section>
-
 </Base>
 
+<ScrollSpacer size="120vh" />
+
+<section id="enter-stage" class="relative h-[60vh]">
+  <!-- Co-transform overlay and slot so alignment never drifts -->
+  <div class="overlay-group absolute inset-0 origin-top" style={`transform: scale(${0.5}, ${0.5});`}>
+    <img
+      src={overlay2.src /* or overlayPng */}
+      alt=""
+      class="absolute inset-0 w-full h-full object-fill pointer-events-none z-0"
+    />
+
+    <!-- Your calibrated TV screen slot (clip if you want nothing outside) -->
+    <div class="tv-screen absolute z-[1]"
+         style={`left:${screenLeft}; top:${screenTop}; width:${screenWidth}; height:${screenHeight}; `}>
+
+      <ChoiceCarousel
+        class="fill-slot-center"
+        targetSelector="#enter-stage"
+        items={items}
+        leftArrow={bigarrow}
+        rightArrow={bigarrow}
+
+        top="0" left="0" right="0" bottom="0"
+        centerX={false} centerY={false}
+        offsetX="0" offsetY="0"
+
+        mode="fill"
+        frameMaxWidth="100%"
+        frameRadius={12}
+        imageFit="contain"  
+        imageScale={1}     
+
+        leftX="-126%"  leftY="341.5%"  leftScale={1.05}
+        rightX="126%"  rightY="340%"  rightScale={1.05}
+        arrowButtonSize="56px"
+        arrowIconWidth="34px"
+
+        navigateOnClick={false}
+        enablePreload={true}
+      />
+    </div>
+  </div>
+
+  <HoldEnterButton
+    durationMs={4000}
+    targetSelector="#enter-stage"
+    label="ENTER"
+    strokeRadius={10}
+    hideOnComplete={true}
+    icon={rightIcon}
+    strokeStart="bottom-center"
+  />
+</section>
+
+<ScrollSpacer size="50vh" />
+
 <style is:global>
+  /* Simple centering helper; no sizing overrides */
   .fill-slot-center{ display:grid; place-items:center; height:100%; }
 </style>
