@@ -36,7 +36,7 @@ const urls = sources.map((s: string | { src: string }) =>
 
 <style>
   .seq5-wrap { position: relative; width: 100%; height: 100%; }
-  canvas.seq5 { display: block; width: 100%; height: 100%; }
+  canvas.seq5 { display: block; width: 100%; height: 100%; background: rgba(0, 255, 0, 0.1); }
 </style>
 
 <div class={`seq5-wrap ${className}`}>
@@ -79,12 +79,19 @@ function preload(){
 }
 
 function resize(){
-  const r = canvas.getBoundingClientRect();
-  W = Math.max(1, Math.floor(r.width * dpr));
-  H = Math.max(1, Math.floor(r.height * dpr));
+  const parent = canvas.parentElement;
+  if (!parent) return;
+
+  const width = parent.offsetWidth;
+  const height = parent.offsetHeight;
+
+  W = Math.max(1, Math.floor(width * dpr));
+  H = Math.max(1, Math.floor(height * dpr));
   canvas.width  = W;
   canvas.height = H;
 }
+
+
 
 const frameDurMs = 1000 / FPS;
 
@@ -119,19 +126,37 @@ function draw(now) {
 
   const s = (CFG?.[imageIndex]?.baseScale || 1) * scaleFactorAtLocalFrame(localFrame);
 
-  const ih = H;
-  const iw = Math.max(1, Math.floor(ih * (nw / nh)));
-  const dw = Math.floor(iw * s);
-  const dh = Math.floor(ih * s);
-
-  const cx = Math.floor(W / 2);
-  const cy = Math.floor(H / 2);
-  const dx = Math.floor(cx - dw / 2 + (CFG?.[imageIndex]?.x || 0) * dpr);
-  const dy = Math.floor(cy - dh / 2 + (CFG?.[imageIndex]?.y || 0) * dpr);
 
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(img, 0, 0, iw, ih, dx, dy, dw, dh);
+    // 1. Calculate aspect ratios
+  const imgAspect = nw / nh;
+  const canvasAspect = W / H;
+
+  // 2. Find the scale factor to fit the canvas (with letterboxing)
+  let scaleToFit = canvasAspect > imgAspect
+    ? H / nh  // canvas is wider → fit by height
+    : W / nw; // canvas is taller → fit by width
+
+  // 3. Combine with baseScale and animation scale
+  const baseScale = CFG?.[imageIndex]?.baseScale || 1;
+  const animScale = scaleFactorAtLocalFrame(localFrame);
+  const finalScale = scaleToFit * baseScale * animScale;
+
+  // 4. Compute final drawn width & height
+  const dw = nw * finalScale;
+  const dh = nh * finalScale;
+
+  // 5. Center image, with optional pixel offsets
+  const dx = (W - dw) / 2 + (CFG?.[imageIndex]?.x || 0) * dpr;
+  const dy = (H - dh) / 2 + (CFG?.[imageIndex]?.y || 0) * dpr;
+
+  // 6. Clear and draw
+  ctx.clearRect(0, 0, W, H);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, dx, dy, dw, dh);
+
 }
 
 function start() {

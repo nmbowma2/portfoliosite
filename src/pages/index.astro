@@ -62,14 +62,6 @@ const seqConfig = [
       chromaStrength={15.0}
     />
 
-    <div class="absolute inset-0 z-20 pointer-events-none translate-y-[20%] md:translate-y-[-11.8%]">
-      <FiveImageSequencer
-        sources={sources}
-        fps={24}
-        config={seqConfig}
-        class="w-full h-full"
-      />
-    </div>
     <BottomArrow
       amp="10px"
       period="1.4s"
@@ -77,11 +69,27 @@ const seqConfig = [
       bottom="3.5%"
       z={60}
       width="64px"
-      hideAtPx={500}    
+      hideAtPx="50%"    
       fadeSpanPx={180}  
     />
   </section>
+    <div class="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+    <div class="w-[80vw] max-w-[600px] aspect-[4/3]">
+      <FiveImageSequencer
+        sources={sources}
+        fps={24}
+        config={seqConfig}
+        class="w-full h-full"
+        fadeEnabled={true}
+        fadeScrollVh={0.5} 
+        fadeMode="in"
+        minOpacity={0}
+        maxOpacity={1}
+      />
+    </div>
+  </div>  
 </Base>
+
 
 <ScrollSpacer size="120vh" />
 
@@ -127,7 +135,7 @@ const seqConfig = [
   </div>
 
   <HoldEnterButton
-    durationMs={4000}
+    durationMs={3000}
     targetSelector="#enter-stage"
     label="ENTER"
     strokeRadius={10}
