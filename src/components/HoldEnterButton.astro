@@ -75,7 +75,6 @@ const iconUrl = icon ? toUrl(icon) : null;
     <svg class="enter-svg" viewBox="0 0 200 72" preserveAspectRatio="none">
       <rect class="enter-stroke" x="1.5" y="1.5" width="197" height="69" rx={strokeRadius} ry={strokeRadius} />
     </svg>
-    <span class="hint" aria-hidden="true"></span>
   </button>
 </div>
 
@@ -99,38 +98,32 @@ const iconUrl = icon ? toUrl(icon) : null;
   function setDashStart(){
     if (!(rect instanceof SVGRectElement)) return;
 
+    // Get geometry
+    const W  = parseFloat(rect.getAttribute('width')  || '197');
+    const H  = parseFloat(rect.getAttribute('height') || '69');
+    const rx = parseFloat(wrap.getAttribute('data-rx') || '10');
+    const r  = Math.min(rx, Math.min(W, H) * 0.5);
+
+    const flatTop   = Math.max(0, W - 2*r);
+    const flatSide  = Math.max(0, H - 2*r);
+    const qArc      = Math.PI * r / 2;
+
     try {
       total = rect.getTotalLength();
     } catch {
-      const W = parseFloat(rect.getAttribute('width') || '197');
-      const H = parseFloat(rect.getAttribute('height') || '69');
-      const rx = parseFloat(wrap.getAttribute('data-rx') || '10');
-      const r  = Math.min(rx, Math.min(W, H) * 0.5);
-      const qArc = Math.PI * r / 2;
-      const flatTop   = W - 2 * r;
-      const flatSide  = H - 2 * r;
-      total = 2 * (W + H - 2 * r) + 2 * Math.PI * r;
-
-      const startAttr = wrap.getAttribute('data-start') || 'bottom-center';
-      let offset = 0;
-
-      if (startAttr === 'top-center') {
-        offset = flatTop / 2;
-      } else {
-        offset = 0.5* flatTop + 2 * qArc + flatSide;
-      }
-
-      rect.style.strokeDashoffset = String(offset);
-      rect.style.strokeDasharray  = `0 ${total}`;
-      rect.style.opacity = '0';
-      return;
+      total = 2 * (W + H - 2*r) + 2 * Math.PI * r;
     }
 
-    rect.style.strokeDashoffset = String(0);
+    // Hard-code start point to TOP-CENTER
+    // path starts at top-left, so offset = half the top edge
+    const offset = -flatTop / 2;
+
+    rect.style.strokeDashoffset = String(offset);
     rect.style.strokeDasharray  = `0 ${total}`;
     rect.style.opacity = '0';
   }
 
+  
   function reset(){
     holding = false;
     btn.setAttribute('aria-pressed','false');
@@ -166,9 +159,12 @@ const iconUrl = icon ? toUrl(icon) : null;
     if (!startTs) startTs = ts;
     const t = ts - startTs;
     const p = Math.max(0, Math.min(1, t / durMs));
-    rect.style.strokeDasharray = `${(p * total).toFixed(2)} ${total}`;
+    const seg = p * total;
+
+    // solid arc + gap pattern
+    rect.style.strokeDasharray = `${seg.toFixed(2)} ${(total - seg).toFixed(2)}`;
+    rect.style.strokeDashoffset = String(offset); // keep anchor fixed
     rect.style.opacity = '1';
-    if (hint) hint.textContent = Math.ceil((durMs - t) / 1000).toString();
 
     if (t >= durMs){
       cancelAnimationFrame(rafId);
@@ -176,7 +172,8 @@ const iconUrl = icon ? toUrl(icon) : null;
       btn.style.setProperty('--press','1.02');
       activate();
     }
-  }
+}
+
 
   const down = () => {
     if (holding) return;
