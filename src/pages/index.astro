@@ -44,7 +44,7 @@ const seqConfig = [
 <!-- Place this near the top of index.astro -->
 
 <Base title="portfoliov1" description="projects">
-  <section class="relative flex items-center justify-center min-h-screen">
+  <section class="relative min-h-screen grid place-items-center min-h-screen">
     <TopoDots
       spacing={24.5}
       amp={14}
@@ -62,7 +62,7 @@ const seqConfig = [
       chromaStrength={15.0}
     />
 
-    <div class="absolute inset-0 z-20 pointer-events-none translate-y-[20%] md:translate-y-[-11.8%]">
+    <div class="w-[90vw] aspect-[16/9]">
       <FiveImageSequencer
         sources={sources}
         fps={24}
@@ -107,7 +107,6 @@ const seqConfig = [
     />
   </section>
 
-  <ScrollSpacer size="50vh" />
 </Base>
 
 <style is:global>
