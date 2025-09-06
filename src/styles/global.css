@@ -1,8 +1,16 @@
 @import "tailwindcss";
 
-/* Your site-wide customizations can go here */
-@layer base {
-  body {
-    @apply bg-neutral-950 text-neutral-100 antialiased;
-  }
+/* disable text selection everywhere */
+* {
+  -webkit-user-select: none; /* iOS Safari */
+  -ms-user-select: none;     /* old Edge */
+  user-select: none;         /* modern browsers */
+  -webkit-touch-callout: none; /* disable long-press menu on iOS */
+}
+
+/* allow input/textarea text selection */
+input, textarea {
+  -webkit-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
 }
