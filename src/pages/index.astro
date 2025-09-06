@@ -68,7 +68,7 @@ const seqConfig = [
       bottom="3.5%"
       z={60}
       width="64px"
-      hideAtPx="50%"    
+      hideAtPx="75%"    
       fadeSpanPx={180}  
     />
   </section>
@@ -92,29 +92,33 @@ const seqConfig = [
 
 <ScrollSpacer size="60vh" />
 
-<section id="enter-stage" class="relative h-[60vh]">
-  <!-- Co-transform overlay and slot so alignment never drifts -->
-  <div class="overlay-group absolute inset-0 origin-top" style={`transform: scale(${0.5}, ${0.5});`}>
+<!-- TV Section with responsive scaling -->
+<section id="enter-stage" class="tv-section">
+  <div class="tv-container">
+    <!-- TV Overlay Background -->
     <img
-      src={overlay2.src /* or overlayPng */}
-      alt=""
-      class="absolute inset-0 w-full h-full object-fill pointer-events-none z-0"
+      src={overlay2.src}
+      alt="TV Frame"
+      class="tv-overlay"
     />
 
-    <!-- Your calibrated TV screen slot (clip if you want nothing outside) -->
-    <div class="tv-screen absolute z-[1]"
-         style={`left:${screenLeft}; top:${screenTop}; width:${screenWidth}; height:${screenHeight}; `}>
-
+    <!-- TV Screen Content Area -->
+    <div class="tv-screen">
       <ChoiceCarousel
-        class="fill-slot-center"
+        class="carousel-content"
         targetSelector="#enter-stage"
         items={items}
         leftArrow={bigarrow}
         rightArrow={bigarrow}
 
-        top="0" left="0" right="0" bottom="0"
-        centerX={false} centerY={false}
-        offsetX="0" offsetY="0"
+        top="0" 
+        left="0" 
+        right="0" 
+        bottom="0"
+        centerX={false} 
+        centerY={false}
+        offsetX="0" 
+        offsetY="0"
 
         mode="fill"
         frameMaxWidth="100%"
@@ -122,8 +126,12 @@ const seqConfig = [
         imageFit="contain"  
         imageScale={1}     
 
-        leftX="-126%"  leftY="341.5%"  leftScale={1.05}
-        rightX="126%"  rightY="340%"  rightScale={1.05}
+        leftX="-126%"  
+        leftY="341.5%"  
+        leftScale={1.05}
+        rightX="126%"  
+        rightY="340%"  
+        rightScale={1.05}
         arrowButtonSize="56px"
         arrowIconWidth="34px"
 
@@ -133,6 +141,7 @@ const seqConfig = [
     </div>
   </div>
 
+  <!-- Enter Button -->
   <HoldEnterButton
     durationMs={3000}
     targetSelector="#enter-stage"
@@ -147,6 +156,74 @@ const seqConfig = [
 <ScrollSpacer size="25vh" />
 
 <style is:global>
-  /* Simple centering helper; no sizing overrides */
-  .fill-slot-center{ display:grid; place-items:center; height:100%; }
+  .tv-section {
+    position: relative;
+    height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .tv-container {
+    position: relative;
+    width: min(80vw, 600px);
+    aspect-ratio: 4/3;
+    transform-origin: center;
+  }
+
+  .tv-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .tv-screen {
+    position: absolute;
+    left: 34.5%;
+    top: 21%;
+    width: 30%;
+    height: 40%;
+    z-index: 1;
+  }
+
+  .carousel-content {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    width: 100%;
+  }
+
+  /* Responsive scaling for smaller screens */
+  @media (max-width: 768px) {
+    .tv-section {
+      height: 50vh;
+      padding: 0.5rem;
+    }
+    
+    .tv-container {
+      width: min(95vw, 500px);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .tv-section {
+      height: 45vh;
+    }
+    
+    .tv-container {
+      width: min(100vw, 400px);
+    }
+  }
+
+  /* Ensure the TV maintains proportions on very wide screens */
+  @media (min-width: 1200px) {
+    .tv-container {
+      width: min(60vw, 800px);
+    }
+  }
 </style>
