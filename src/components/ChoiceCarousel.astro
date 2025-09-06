@@ -10,10 +10,12 @@ export interface Item {
 
 export interface Props {
   items?: Item[];
+  items2?: Item[]; // NEW: Secondary image items
   targetSelector?: string;
   top?: string; bottom?: string; left?: string; right?: string;
   centerX?: boolean; centerY?: boolean;
   offsetX?: string; offsetY?: string;
+  verticalOffset?: string; // NEW: Move entire carousel up/down
   z?: number;
   frameMaxWidth?: string;
   frameAspect?: string;
@@ -32,22 +34,31 @@ export interface Props {
   imageScale?: number;
   imagePosX?: string;
   imagePosY?: string;
+  // NEW: Secondary image controls
+  secondaryImageOffset?: string;
+  secondaryImageWidth?: string;
+  secondaryImageHeight?: string;
+  secondaryImageFit?: "cover" | "contain";
+  secondaryImageRadius?: number;
   class?: string;
 }
 
 const {
   items = [],
+  items2 = [],
   targetSelector = "#enter-stage",
   top, bottom, left, right,
   centerX = false, centerY = false,
-  offsetX = "0", offsetY = "0", z = 60,
+  offsetX = "0", offsetY = "0",
+  verticalOffset = "0px",
+  z = 60,
   frameMaxWidth = "100%",
   frameAspect = "16 / 9",
   frameRadius = 12,
   frameScale = 1,
   leftArrow, rightArrow,
-  leftX = "-50%",  leftY = "120%",   leftScale = 1,
-  rightX = "50%",  rightY = "120%",  rightScale = 1,
+  leftX = "-475%",  leftY = "0%",   leftScale = 1.6,
+  rightX = "475%",  rightY = "0%",  rightScale = 1.6,
   arrowButtonSize = "40px",
   arrowIconWidth = "24px",
   navigateOnClick = false,
@@ -57,6 +68,11 @@ const {
   imageScale = 1.02,
   imagePosX = "50%",
   imagePosY = "50%",
+  secondaryImageOffset = "0px",
+  secondaryImageWidth = "150px",
+  secondaryImageHeight = "100px",
+  secondaryImageFit = "cover",
+  secondaryImageRadius = 8,
   class: className = "",
 } = Astro.props;
 
@@ -90,6 +106,15 @@ const normalized = items.map(it => ({
   posY: it.posY,
 }));
 
+const normalized2 = items2.map(it => ({
+  src: typeof it.src === 'string' ? it.src : it.src?.src,
+  label: it.label || "",
+  href: typeof it.href === "string" ? withBase(it.href) : (it.href || ""),
+  scale: it.scale,
+  posX: it.posX,
+  posY: it.posY,
+}));
+
 const lUrl = leftArrow ? toUrl(leftArrow) : null;
 const rUrl = rightArrow ? toUrl(rightArrow) : null;
 ---
@@ -103,7 +128,7 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     bottom: var(--host-bottom);
     left: var(--host-left);
     right: var(--host-right);
-    transform: translate(calc(var(--host-tx)), calc(var(--host-ty)));
+    transform: translate(calc(var(--host-tx)), calc(var(--host-ty) + var(--vertical-offset)));
     z-index: var(--z);
   }
   .carousel-host.is-on{ 
@@ -111,7 +136,11 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     pointer-events:auto;
   }
 
-  .shell{ position:relative; width: var(--frameW); height: 100%; }
+  .shell{ 
+    position:relative; 
+    width: var(--frameW); 
+    height: 100%; 
+  }
 
   .frame {
     position:relative; width:100%; height:100%;
@@ -138,6 +167,32 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     user-select:none; -webkit-user-drag:none;
   }
 
+  .secondary-image {
+    position: absolute;
+    top: calc(100% + var(--secondary-offset));
+    left: 50%;
+    transform: translateX(-50%);
+    width: var(--secondary-width);
+    height: var(--secondary-height);
+    border-radius: var(--secondary-radius);
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 200ms ease;
+  }
+
+  .secondary-image.loaded {
+    opacity: 1;
+  }
+
+  .secondary-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: var(--secondary-fit);
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
   .nav{
     -webkit-tap-highlight-color: transparent;
     position:absolute; left:50%; top:50%;
@@ -147,7 +202,7 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     cursor:pointer;
     display:grid; place-items:center;
     transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(var(--s));
-    opacity: 0.7;
+    opacity: 0.85;
     transition: opacity 120ms ease, transform 120ms ease;
   }
   .nav:hover  { 
@@ -155,7 +210,7 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(calc(var(--s) * 1.1));
   }
   .nav:active { 
-    opacity: 0.8; 
+    opacity: 0.6; 
     transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(calc(var(--s) * 0.95)); 
   }
   .nav img{ 
@@ -165,8 +220,8 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     pointer-events:none;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
   }
-  .nav.left  img{ transform: rotate(90deg); }
-  .nav.right img{ transform: rotate(-90deg); }
+  .nav.left  img{ transform: rotate(0deg); }
+  .nav.right img{ transform: rotate(-180deg); }
   
   /* Debug status - remove in production */
   .debug-status {
@@ -187,6 +242,7 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
   class={`carousel-host ${className}`}
   data-target={targetSelector}
   data-items={JSON.stringify(normalized)}
+  data-items2={JSON.stringify(normalized2)}
   style={`
     --host-top:${top ?? "auto"};
     --host-bottom:${bottom ?? "auto"};
@@ -200,7 +256,10 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
   <div class="debug-status">CAROUSEL: WAITING</div>
   <div
     class="shell"
-    style={`--frameW:${frameMaxWidth};`}
+    style={`
+      --frameW:${frameMaxWidth};
+      transform: translateY(${verticalOffset});
+    `}
   >
     <div
       class={`frame ${mode}`}
@@ -214,10 +273,20 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
         --img-pos-y:${imagePosY};
         --btnSize:${arrowButtonSize};
         --iconW:${arrowIconWidth};
+        --secondary-offset:${secondaryImageOffset};
+        --secondary-width:${secondaryImageWidth};
+        --secondary-height:${secondaryImageHeight};
+        --secondary-fit:${secondaryImageFit};
+        --secondary-radius:${secondaryImageRadius}px;
       `}
       data-nav={navigateOnClick ? "1" : "0"}
     >
       <div class="mask"><img alt="" /></div>
+
+      <!-- Secondary image -->
+      <div class="secondary-image">
+        <img alt="" />
+      </div>
 
       <!-- LEFT ARROW - Positioned below and to the left -->
       <button
@@ -262,10 +331,16 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
   updateStatus('HOST FOUND');
 
   let items = [];
+  let items2 = [];
+  
   try { 
     const itemsData = host.getAttribute('data-items') || '[]';
     items = JSON.parse(itemsData);
-    updateStatus(`${items.length} ITEMS LOADED`);
+    
+    const items2Data = host.getAttribute('data-items2') || '[]';
+    items2 = JSON.parse(items2Data);
+    
+    updateStatus(`${items.length} MAIN ITEMS, ${items2.length} SECONDARY ITEMS LOADED`);
   } catch (e) {
     console.error('❌ ChoiceCarousel: Failed to parse items:', e);
     updateStatus('PARSE ERROR');
@@ -279,8 +354,10 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
   }
 
   const frame = host.querySelector('.frame');
-  const img   = host.querySelector('.mask img');
-  const left  = host.querySelector('.nav.left');
+  const img = host.querySelector('.mask img');
+  const secondaryImg = host.querySelector('.secondary-image img');
+  const secondaryContainer = host.querySelector('.secondary-image');
+  const left = host.querySelector('.nav.left');
   const right = host.querySelector('.nav.right');
 
   if (!(frame && img)) {
@@ -292,29 +369,60 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
   updateStatus('ELEMENTS READY');
 
   let i = 0;
+  let i2 = 0;
+  
   function setImage(it) {
     const src = it?.src;
     if (!src) return;
-    console.log('🖼️ Setting image:', src);
+    console.log('🖼️ Setting main image:', src);
     img.src = src;
     img.alt = it?.label || '';
   }
   
+  function setSecondaryImage(it) {
+    if (!secondaryImg || !secondaryContainer) return;
+    
+    const src = it?.src;
+    if (!src) {
+      secondaryContainer.classList.remove('loaded');
+      return;
+    }
+    
+    console.log('🖼️ Setting secondary image:', src);
+    secondaryImg.src = src;
+    secondaryImg.alt = it?.label || '';
+    secondaryContainer.classList.add('loaded');
+  }
+  
   function render() { 
     const it = items[i];
-    console.log(`🎨 Rendering item ${i}:`, it);
+    console.log(`🎨 Rendering main item ${i}:`, it);
     setImage(it);
-    updateStatus(`SHOWING ${i + 1}/${items.length}`);
+    
+    // Render secondary image if available
+    if (items2.length > 0) {
+      const it2 = items2[i2];
+      console.log(`🎨 Rendering secondary item ${i2}:`, it2);
+      setSecondaryImage(it2);
+    }
+    
+    updateStatus(`SHOWING ${i + 1}/${items.length}${items2.length ? `, SEC: ${i2 + 1}/${items2.length}` : ''}`);
   }
   
   function next(n) { 
-    i = (i + n + items.length) % items.length; 
-    console.log(`➡️ Navigation: new index ${i}`);
+    i = (i + n + items.length) % items.length;
+    
+    // Also advance secondary image if available
+    if (items2.length > 0) {
+      i2 = (i2 + n + items2.length) % items2.length;
+    }
+    
+    console.log(`➡️ Navigation: new main index ${i}, secondary index ${i2}`);
     render(); 
   }
 
   // Navigation
-  left?.addEventListener('click',  () => next(-1));
+  left?.addEventListener('click', () => next(-1));
   right?.addEventListener('click', () => next(+1));
 
   // ACTIVATION LOGIC
@@ -372,11 +480,15 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
   console.log('🎧 All event listeners attached');
   updateStatus('WAITING FOR ACTIVATION');
 
-  // Show first image immediately for testing
+  // Show first images immediately for testing
   setTimeout(() => {
     if (items[0]) {
-      console.log('🖼️ Loading first image for preview');
+      console.log('🖼️ Loading first main image for preview');
       setImage(items[0]);
+    }
+    if (items2[0]) {
+      console.log('🖼️ Loading first secondary image for preview');
+      setSecondaryImage(items2[0]);
     }
   }, 100);
 

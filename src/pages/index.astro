@@ -12,20 +12,28 @@ import img2 from "../assets/photos/font_2.png";
 import img3 from "../assets/photos/font_3.png";
 import img4 from "../assets/photos/font_4.png";
 import img5 from "../assets/photos/font_5.png";
-import overlay2 from "../assets/photos/tv overlay.png";
+import overlay2 from "../assets/photos/tvoff_1.gif";
 import rightIcon from "../assets/photos/lock.png";
 import c1 from "../assets/photos/videos.png"
 import c2 from "../assets/photos/music.png"
-import c3 from "../assets/photos/picture.png"
+import c3 from "../assets/photos/photos.png"
 import bigarrow from "../assets/photos/arrow_black.png"
+import cf1 from "../assets/photos/carouselfont1.png"
+import cf2 from "../assets/photos/carouselfont2.png"
+import cf3 from "../assets/photos/carouselfont3.png"
 
 const withBase = (p: string) => import.meta.env.BASE_URL + p.replace(/^\//, '');
 
 /* carousel items */
 const items = [
   { src: c1.src, href: withBase("videos/"), label: "videos" },
-  { src: c2.src, href: withBase("music/"),  label: "Music"  },
+  { src: c2.src, href: withBase("music/"),  label: "music"  },
   { src: c3.src, href: withBase("photos/"), label: "photos" },
+];
+const items2 = [
+  { src: cf1.src, href: withBase("videos/"), label: "videos"},
+  { src: cf2.src, href: withBase("music/"), label: "music"},
+  { src: cf3.src, href: withBase("photos/"), label: "photos"},
 ];
 const sources = [img1, img2, img3, img4, img5];
 const seqConfig = [
@@ -75,7 +83,7 @@ const seqConfig = [
         config={seqConfig}
         class="w-full h-full"
         fadeEnabled={true}
-        fadeScrollVh={0.5} 
+        fadeScrollVh={0.8} 
         fadeMode="out"
         minOpacity={0}
         maxOpacity={1}
@@ -104,6 +112,7 @@ const seqConfig = [
         class="carousel-content"
         targetSelector="#enter-stage"
         items={items}
+        items2 = {items2}
         leftArrow={bigarrow}
         rightArrow={bigarrow}
 
@@ -123,7 +132,13 @@ const seqConfig = [
         imageScale={1}     
 
         navigateOnClick={false}
-        enablePreload={true}
+
+        verticalOffset = "-50px",
+
+        secondaryImageOffset = "-250px",
+        secondaryImageWidth = "500px",
+        secondaryImageHeight = "450px",
+        
       />
     </div>
   </div>
@@ -140,6 +155,7 @@ const seqConfig = [
   />
 </section>
 <ScrollSpacer size="25vh" />
+
 
 <style is:global>
   .tv-section {
