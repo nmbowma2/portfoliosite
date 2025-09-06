@@ -1,7 +1,7 @@
 ---
 /**
  * FiveImageSequencer.astro
- * Plays 5 transparent PNGs in sequence, 40 frames each, at configurable FPS.
+ * Plays 5 transparent PNGs in sequence, 40+ frames each, at configurable FPS.
  * - sources: array of 5 images (strings or imported assets)
  * - fps: number, default 24
  * - config: [{x,y,baseScale}, ...] one per image
@@ -16,16 +16,21 @@ const {
     { x: 0,   y: 0,   baseScale: 1 },
     { x: 0,   y: 0,   baseScale: 1 },
   ],
-  class: className = ""
+  class: className = "",
 } = Astro.props;
 
 if (!Array.isArray(sources) || sources.length < 5) {
   console.warn("[FiveImageSequencer] expected 5 images, got", sources);
 }
 
-// Convert Astro ImageMetadata or string into plain URL
+// Convert Astro ImageMetadata or string into plain URL (base-aware)
+const withBase = (u?: string) =>
+  (typeof u === 'string' && u.startsWith('/'))
+    ? import.meta.env.BASE_URL + u.slice(1)
+    : u;
+
 const urls = sources.map((s: string | { src: string }) =>
-  typeof s === "string" ? s : s.src
+  typeof s === "string" ? (withBase(s) as string) : s.src
 );
 ---
 
@@ -40,10 +45,8 @@ const urls = sources.map((s: string | { src: string }) =>
 
 <script define:vars={{ urls, fps, config }}>
 // @ts-nocheck
-
 const RATE_UP   = .25;
 const RATE_DOWN = .125;
-
 const FRAMES_PER_IMAGE = 55;
 const SLOT0 = { HOLD_START: 0,  HOLD_END: 44 };
 const SLOT1 = { UP_START: 44,   UP_END: 50 };
@@ -60,28 +63,24 @@ let W = 0, H = 0;
 
 let images = [];
 let natural = [];
-let loaded = 0;
 
-function preload() {
-  images = URLS.map((src, i) => {
-    const img = new Image();
-    img.src = src;
-    img.onload = () => {
-      natural[i] = { w: img.naturalWidth, h: img.naturalHeight };
-      if (++loaded === URLS.length) {
-        resize();
-        start();
-      }
+function preload(){
+  images = new Array(5).fill(null);
+  natural = new Array(5).fill([1,1]);
+  URLS.forEach((u, i) => {
+    const im = new Image();
+    im.onload = () => {
+      images[i]  = im;
+      natural[i] = [im.naturalWidth, im.naturalHeight];
+      if (images.every(Boolean)) start();
     };
-    img.decode?.().catch(()=>{});
-    return img;
+    im.src = u;
   });
 }
 
-function resize() {
+function resize(){
   const r = canvas.getBoundingClientRect();
-  dpr = Math.max(1, window.devicePixelRatio || 1);
-  W = Math.max(1, Math.floor(r.width  * dpr));
+  W = Math.max(1, Math.floor(r.width * dpr));
   H = Math.max(1, Math.floor(r.height * dpr));
   canvas.width  = W;
   canvas.height = H;
@@ -112,25 +111,23 @@ function draw(now) {
   const imageIndex  = Math.floor(globalFrame / FRAMES_PER_IMAGE) % 5;
   const localFrame  = globalFrame % FRAMES_PER_IMAGE;
 
+  const img = images[imageIndex];
+  if (!img) return;
+
+  const [nw, nh] = natural[imageIndex] || [img.naturalWidth, img.naturalHeight];
   ctx.clearRect(0, 0, W, H);
 
-  const img = images[imageIndex];
-  if (!img || !img.complete) return;
+  const s = (CFG?.[imageIndex]?.baseScale || 1) * scaleFactorAtLocalFrame(localFrame);
 
-  const { w: iw, h: ih } = natural[imageIndex] || { w: img.naturalWidth, h: img.naturalHeight };
-  const { x, y, baseScale } = CFG[imageIndex] || { x:0, y:0, baseScale:1 };
+  const ih = H;
+  const iw = Math.max(1, Math.floor(ih * (nw / nh)));
+  const dw = Math.floor(iw * s);
+  const dh = Math.floor(ih * s);
 
-  const f = Math.max(0, Math.min(FRAMES_PER_IMAGE - 1, localFrame));
-  const factor = scaleFactorAtLocalFrame(f);
-  const scale = Math.max(0.01, baseScale * factor);
-
-  const cx = W * 0.5;
-  const cy = H * 0.5;
-
-  const dw = iw * scale * dpr;
-  const dh = ih * scale * dpr;
-  const dx = cx + (x * dpr) - (dw * 0.5);
-  const dy = cy + (y * dpr) - (dh * 0.5);
+  const cx = Math.floor(W / 2);
+  const cy = Math.floor(H / 2);
+  const dx = Math.floor(cx - dw / 2 + (CFG?.[imageIndex]?.x || 0) * dpr);
+  const dy = Math.floor(cy - dh / 2 + (CFG?.[imageIndex]?.y || 0) * dpr);
 
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";

@@ -14,28 +14,20 @@ import img4 from "../assets/photos/font_4.png";
 import img5 from "../assets/photos/font_5.png";
 import overlay1 from "../assets/photos/tv overlay_2.gif";
 import overlay2 from "../assets/photos/tv overlay.png";
-import opt1 from "../assets/photos/videos.png";
-import opt2 from "../assets/photos/music.png";
-import opt3 from "../assets/photos/picture.png";
 import rightIcon from "../assets/photos/lock.png";
-import bigarrow from "../assets/photos/bigarrow.png";
 
-
-/* overlay transform (applies to both overlay image and the slot) */
-const overlayScaleX = 0.9;
-const overlayScaleY = 1.7;
-
-/* TV screen slot (calibrate these 4) */
 const screenLeft   = '34.5%';
 const screenTop    = '21%';
 const screenWidth  = '30%';
 const screenHeight = '40%';
 
+const withBase = (p: string) => import.meta.env.BASE_URL + p.replace(/^\//, '');
+
 /* carousel items */
 const items = [
-  { src: opt1.src, href: "/videos",   label: "videos" },
-  { src: opt2.src, href: "/Music",      label: "Music"    },
-  { src: opt3.src, href: "/photos", label: "photos" },
+  { src: opt1.src, href: withBase("videos/"), label: "videos" },
+  { src: opt2.src, href: withBase("music/"),  label: "Music"  },
+  { src: opt3.src, href: withBase("photos/"), label: "photos" },
 ];
 const sources = [img1, img2, img3, img4, img5];
 const seqConfig = [
@@ -71,79 +63,49 @@ const seqConfig = [
         sources={sources}
         fps={24}
         config={seqConfig}
-        class="w-full h-full"
       />
     </div>
-    <BottomArrow
-      amp="10px"
-      period="1.4s"
-      scale={2.75}
-      bottom="25%"
-      z={60}
-      width="64px"
-      hideAtPx={500}    
-      fadeSpanPx={180}  
+
+    <div
+      class="absolute z-30"
+      style={`left:${screenLeft}; top:${screenTop}; width:${screenWidth}; height:${screenHeight};`}
+    >
+      <div class="fill-slot-center">
+        <ChoiceCarousel
+          items={items}
+          targetSelector="#enter-stage"
+          top="0" bottom="0" left="0" right="0"
+          centerX={true} centerY={true}
+          offsetX="0" offsetY="0"
+          mode="fill"
+          frameMaxWidth="100%"
+          frameRadius={12}
+          imageFit="contain"
+          imageScale={1}
+          leftX="-126%"  leftY="341.5%"  leftScale={1.05}
+          rightX="126%"  rightY="340%"    rightScale={1.05}
+          arrowButtonSize="56px"
+          arrowIconWidth="34px"
+          navigateOnClick={false}
+          enablePreload={true}
+        />
+      </div>
+    </div>
+
+    <HoldEnterButton
+      durationMs={4000}
+      targetSelector="#enter-stage"
+      label="ENTER"
+      strokeRadius={10}
+      hideOnComplete={true}
+      icon={rightIcon}
+      strokeStart="bottom-center"
     />
   </section>
+
+  <ScrollSpacer size="50vh" />
 </Base>
 
-<ScrollSpacer size="120vh" />
-
-<section id="enter-stage" class="relative h-[60vh]">
-  <!-- Co-transform overlay and slot so alignment never drifts -->
-  <div class="overlay-group absolute inset-0 origin-top" style={`transform: scale(${overlayScaleX}, ${overlayScaleY});`}>
-    <img
-      src={overlay2.src /* or overlayPng */}
-      alt=""
-      class="absolute inset-0 w-full h-full object-fill pointer-events-none z-0"
-    />
-
-    <!-- Your calibrated TV screen slot (clip if you want nothing outside) -->
-    <div class="tv-screen absolute z-[1]"
-         style={`left:${screenLeft}; top:${screenTop}; width:${screenWidth}; height:${screenHeight}; `}>
-
-      <ChoiceCarousel
-        class="fill-slot-center"
-        targetSelector="#enter-stage"
-        items={items}
-        leftArrow={bigarrow}
-        rightArrow={bigarrow}
-
-        top="0" left="0" right="0" bottom="0"
-        centerX={false} centerY={false}
-        offsetX="0" offsetY="0"
-
-        mode="fill"
-        frameMaxWidth="100%"
-        frameRadius={12}
-        imageFit="contain"  
-        imageScale={1}     
-
-        leftX="-126%"  leftY="341.5%"  leftScale={1.05}
-        rightX="126%"  rightY="340%"  rightScale={1.05}
-        arrowButtonSize="56px"
-        arrowIconWidth="34px"
-
-        navigateOnClick={false}
-        enablePreload={true}
-      />
-    </div>
-  </div>
-
-  <HoldEnterButton
-    durationMs={4000}
-    targetSelector="#enter-stage"
-    label="ENTER"
-    strokeRadius={10}
-    hideOnComplete={true}
-    icon={rightIcon}
-    strokeStart="bottom-center"
-  />
-</section>
-
-<ScrollSpacer size="50vh" />
-
 <style is:global>
-  /* Simple centering helper; no sizing overrides */
   .fill-slot-center{ display:grid; place-items:center; height:100%; }
 </style>

@@ -32,36 +32,33 @@ const {
   ariaLabel = "Scroll down",
 } = Astro.props;
 
-const url = typeof src === "string" ? src : src.src;
+const withBase = (u?: string) =>
+  (typeof u === 'string' && u.startsWith('/'))
+    ? import.meta.env.BASE_URL + u.slice(1)
+    : u;
+
+const toUrl = (v?: string | { src: string }) =>
+  typeof v === 'string' ? withBase(v) : v?.src;
+
+const url = toUrl(src) ?? defaultArrow.src;
 const iW  = typeof src === "string" ? undefined : src.width;
 const iH  = typeof src === "string" ? undefined : src.height;
 ---
 
 <style>
   .scroll-arrow {
-    position: absolute;
-    left: 50%;
-    bottom: var(--bottom, 24px);
-    z-index: var(--z, 50);
-    width: var(--w, 48px);
-    height: auto;
-    pointer-events: none;
-
-    transform: translateX(-50%) translateY(0) scale(var(--scale, 1));
-    animation: arrow-bounce var(--period, 1.6s) ease-in-out infinite;
-
-    opacity: var(--alpha, 1);
-    will-change: transform, opacity;
+    position: fixed; left: 50%;
+    transform: translateX(-50%) translateY(0) scale(var(--scale));
+    bottom: var(--bottom); width: var(--w);
+    z-index: var(--z);
+    filter: opacity(var(--alpha,1));
+    animation: arrow-bounce var(--period) ease-in-out infinite;
+    will-change: transform, filter;
   }
 
   @keyframes arrow-bounce {
-    0%, 100% { transform: translateX(-50%) translateY(0)                          scale(var(--scale, 1)); }
-    25%      { transform: translateX(-50%) translateY(calc(var(--amp, 8px) * -1)) scale(var(--scale, 1)); }
-    75%      { transform: translateX(-50%) translateY(var(--amp, 8px))            scale(var(--scale, 1)); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .scroll-arrow { animation: none; }
+    0%, 100% { transform: translateX(-50%) translateY(-0.25rem) scale(var(--scale)); }
+    50%      { transform: translateX(-50%) translateY(var(--amp))   scale(var(--scale)); }
   }
 </style>
 
@@ -94,7 +91,6 @@ const iH  = typeof src === "string" ? undefined : src.height;
 
   function update(){
     var y = window.scrollY || window.pageYOffset || 0;
-    // Fade from fully visible -> fully hidden across a band centered on hideAt
     var start = hideAt - span * 0.5;
     var end   = hideAt + span * 0.5;
     var fade  = smoothstep(start, end, y); // 0..1

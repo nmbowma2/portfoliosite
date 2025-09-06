@@ -7,8 +7,8 @@ export interface Props {
   icon?: string | { src: string };
   iconWidth?: string;
   hideOnComplete?: boolean;
-  strokeRadius?: number;        // corners for the animated stroke
-  strokeStart?: "bottom-center" | "top-center"; // NEW: start point control
+  strokeRadius?: number;
+  strokeStart?: "bottom-center" | "top-center";
   class?: string;
 }
 
@@ -21,11 +21,19 @@ const {
   iconWidth = "16px",
   hideOnComplete = true,
   strokeRadius = 10,
-  strokeStart = "bottom-center",       
+  strokeStart = "bottom-center",
   class: className = "",
 } = Astro.props;
 
-const iconUrl = icon ? (typeof icon === "string" ? icon : icon.src) : null;
+const withBase = (u?: string) =>
+  (typeof u === 'string' && u.startsWith('/'))
+    ? import.meta.env.BASE_URL + u.slice(1)
+    : u;
+
+const toUrl = (v?: string | { src: string }) =>
+  typeof v === "string" ? (withBase(v) as string) : v?.src;
+
+const iconUrl = icon ? toUrl(icon) : null;
 ---
 
 <style>
@@ -64,12 +72,9 @@ const iconUrl = icon ? (typeof icon === "string" ? icon : icon.src) : null;
   <button class="enter-btn" type="button" aria-pressed="false">
     <span>{label}</span>
     {iconUrl && <img class="icon" src={iconUrl} alt="" aria-hidden="true" />}
-
-    <!-- Rounded-rect stroke; we’ll shift dash start to bottom-center in JS -->
     <svg class="enter-svg" viewBox="0 0 200 72" preserveAspectRatio="none">
       <rect class="enter-stroke" x="1.5" y="1.5" width="197" height="69" rx={strokeRadius} ry={strokeRadius} />
     </svg>
-
     <span class="hint" aria-hidden="true"></span>
   </button>
 </div>
@@ -80,43 +85,50 @@ const iconUrl = icon ? (typeof icon === "string" ? icon : icon.src) : null;
   if (!wrap) return;
   const btn   = wrap.querySelector('.enter-btn');
   const rect  = wrap.querySelector('.enter-stroke');
+  const hint  = wrap.querySelector('.hint');
+  const durMs = Math.max(100, parseInt(wrap.getAttribute('data-dur') || '2000', 10));
   const targetSel  = wrap.getAttribute('data-target') || '#enter-stage';
   const overlaySel = wrap.getAttribute('data-overlay') || '';
-  const hideOnDone = wrap.getAttribute('data-hide') === '1';
-  const dur        = parseInt(wrap.getAttribute('data-dur') || '3000', 10);
-  const rx         = parseFloat(wrap.getAttribute('data-rx') || '10');
-  const startMode  = (wrap.getAttribute('data-start') || 'bottom-center').toLowerCase();
-  const target     = document.querySelector(targetSel);
-  if (!btn || !rect || !target) return;
+  const hide       = wrap.getAttribute('data-hide') === '1';
 
-  let total = 0, holding = false, startT = 0, rafId = 0;
+  let holding = false;
+  let rafId   = 0;
+  let startTs = 0;
+  let total   = 0;
 
-  // Compute dashoffset so drawing starts at requested point on the rounded-rect
   function setDashStart(){
-    // geometry from rect attrs (in the viewBox units)
-    const W = parseFloat(rect.getAttribute('width')  || '197');
-    const H = parseFloat(rect.getAttribute('height') || '69');
-    const r = Math.min(rx, Math.min(W, H) * 0.5);
-    try { total = rect.getTotalLength(); } catch { total = 2*(W+H-2*r) + 2*Math.PI*r; }
+    if (!(rect instanceof SVGRectElement)) return;
 
-    // lengths for convenience
-    const flatTop   = Math.max(0, W - 2*r);
-    const flatSide  = Math.max(0, H - 2*r);
-    const qArc      = Math.PI * r / 2; // quarter-circle arc length
+    try {
+      total = rect.getTotalLength();
+    } catch {
+      const W = parseFloat(rect.getAttribute('width') || '197');
+      const H = parseFloat(rect.getAttribute('height') || '69');
+      const rx = parseFloat(wrap.getAttribute('data-rx') || '10');
+      const r  = Math.min(rx, Math.min(W, H) * 0.5);
+      const qArc = Math.PI * r / 2;
+      const flatTop   = W - 2 * r;
+      const flatSide  = H - 2 * r;
+      total = 2 * (W + H - 2 * r) + 2 * Math.PI * r;
 
-    let offset = 0;
-    if (startMode === 'top-center'){
-      offset = flatTop / 2;
-    } else {
-      // bottom-center along the clockwise path starting at the top-left flat-start
-      // path goes: top flat -> TR arc -> right flat -> BR arc -> bottom flat (right->left)
-      // we want halfway across the bottom flat: add flatTop + qArc + flatSide + qArc + (flatBottom/2)
-      offset = 0.5* flatTop + 2 * qArc + flatSide
+      const startAttr = wrap.getAttribute('data-start') || 'bottom-center';
+      let offset = 0;
+
+      if (startAttr === 'top-center') {
+        offset = flatTop / 2;
+      } else {
+        offset = 0.5* flatTop + 2 * qArc + flatSide;
+      }
+
+      rect.style.strokeDashoffset = String(offset);
+      rect.style.strokeDasharray  = `0 ${total}`;
+      rect.style.opacity = '0';
+      return;
     }
 
-    rect.style.strokeDashoffset = String(offset);
+    rect.style.strokeDashoffset = String(0);
     rect.style.strokeDasharray  = `0 ${total}`;
-    rect.style.opacity = '0'; // hidden until press
+    rect.style.opacity = '0';
   }
 
   function reset(){
@@ -129,7 +141,7 @@ const iconUrl = icon ? (typeof icon === "string" ? icon : icon.src) : null;
   }
 
   function maybeFadeOverlay(){
-    if (!overlaySel) return; // default: keep overlay visible
+    if (!overlaySel) return;
     const el = document.querySelector(overlaySel);
     if (!el) return;
     el.style.transition = 'opacity 220ms ease';
@@ -137,32 +149,42 @@ const iconUrl = icon ? (typeof icon === "string" ? icon : icon.src) : null;
     setTimeout(() => { el.style.display = 'none'; }, 240);
   }
 
-  function complete(){
-    btn.setAttribute('aria-disabled','true');
-    rect.style.strokeDasharray = `${total} 0`;
-    target.setAttribute('data-entered','true');     // carousel will read this
-    maybeFadeOverlay();                              // default no-op
-    window.dispatchEvent(new CustomEvent('enter:activated', { detail:{ selector: targetSel }}));
-    if (hideOnDone){ wrap.style.display = 'none'; }
+  function activate(){
+    const target = document.querySelector(targetSel);
+    if (!target) return;
+    target.setAttribute('data-entered','true');
+    document.dispatchEvent(new CustomEvent('enter:activated', { detail: { selector: targetSel }}));
+    if (hide) {
+      const wrap = document.querySelector('.enter-wrap');
+      if (wrap) wrap.style.display = 'none';
+    }
+    maybeFadeOverlay();
   }
 
-  function tick(now){
-    if (!holding) return;
-    const t = Math.min(1, (now - startT) / dur);
-    const seg = t * total;
-    rect.style.strokeDasharray = `${seg} ${Math.max(0,total - seg)}`;
-    if (t >= 1){ complete(); return; }
-    rafId = requestAnimationFrame(tick);
+  function step(ts){
+    rafId = requestAnimationFrame(step);
+    if (!startTs) startTs = ts;
+    const t = ts - startTs;
+    const p = Math.max(0, Math.min(1, t / durMs));
+    rect.style.strokeDasharray = `${(p * total).toFixed(2)} ${total}`;
+    rect.style.opacity = '1';
+    if (hint) hint.textContent = Math.ceil((durMs - t) / 1000).toString();
+
+    if (t >= durMs){
+      cancelAnimationFrame(rafId);
+      btn.setAttribute('aria-pressed','true');
+      btn.style.setProperty('--press','1.02');
+      activate();
+    }
   }
 
   const down = () => {
-    if (target.getAttribute('data-entered') === 'true') return;
+    if (holding) return;
     holding = true;
-    btn.setAttribute('aria-pressed','true');
-    btn.style.setProperty('--press','1.03');
-    startT = performance.now();
+    startTs = 0;
+    btn.style.setProperty('--press','1.02');
     rect.style.opacity = '1';
-    rafId = requestAnimationFrame(tick);
+    rafId = requestAnimationFrame(step);
   };
   const up = () => { if (holding) reset(); };
 

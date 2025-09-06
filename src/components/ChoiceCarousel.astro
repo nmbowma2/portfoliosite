@@ -44,7 +44,7 @@ export interface Props {
    */
   mode?: "fill" | "proportional";
 
-  /** Proportional image controls (used only when mode="proportional") */
+  /** proportional-mode image tuning (ignored in fill mode) */
   imageFit?: "cover" | "contain";
   imageScale?: number;
   imagePosX?: string;
@@ -57,7 +57,7 @@ const {
   items = [],
   targetSelector = "#enter-stage",
 
-  top = "0", bottom = "0", left = "0", right = "0",
+  top, bottom, left, right,
   centerX = false, centerY = false,
   offsetX = "0", offsetY = "0", z = 60,
 
@@ -77,28 +77,31 @@ const {
   mode = "fill",
 
   imageFit = "cover",
-  imageScale = 1.02,        // tiny seam insurance; set 1 if you don’t want it
+  imageScale = 1.02,
   imagePosX = "50%",
   imagePosY = "50%",
 
   class: className = "",
 } = Astro.props;
 
-const toUrl = (x: any) => typeof x === "string" ? x : x?.src;
+const withBase = (u?: string) =>
+  (typeof u === 'string' && u.startsWith('/'))
+    ? import.meta.env.BASE_URL + u.slice(1)
+    : u;
+
+const toUrl = (x: any) => typeof x === 'string' ? withBase(x) : x?.src;
+
 const normalized = items.map(it => ({
   src: toUrl(it.src),
   label: it.label || "",
-  href: it.href || "",
+  href: typeof it.href === "string" ? withBase(it.href) : (it.href || ""),
   scale: it.scale,
   posX: it.posX,
   posY: it.posY,
 }));
+
 const lUrl = leftArrow ? toUrl(leftArrow) : null;
 const rUrl = rightArrow ? toUrl(rightArrow) : null;
-
-// translate center flags into a translate string
-const tx = `${centerX ? "-50%" : "0"} + ${offsetX}`;
-const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
 ---
 
 <style>
@@ -118,31 +121,23 @@ const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
   .shell{ position:relative; width: var(--frameW); height: 100%; }
 
   /* FRAME: two modes */
-  .frame{
-    position: relative;
-    width: 100%;
+  .frame {
+    position:relative; width:100%; height:100%;
+    border-radius: var(--radius);
+    overflow:hidden;
   }
-  /* fill mode: frame matches slot exactly (no aspect/scale) */
-  .frame.fill{
-    height: 100%;
-  }
-  /* proportional mode: keep aspect & allow scale */
-  .frame.prop{
+  .frame.fill { transform: none; }
+  .frame.proportional {
     aspect-ratio: var(--aspect);
     transform: scale(var(--frameScale));
-    transform-origin: center;
+    transform-origin:center center;
   }
 
-  /* clipper with rounded corners, transparent background (no black box) */
   .mask{
-    position: absolute; inset: 0;
-    border-radius: var(--radius);
-    overflow: hidden;
-    background: transparent;
-    box-shadow: none;
+    position:absolute; inset:0;
+    clip-path: inset(0 round var(--radius));
   }
 
-  /* the image obeys CSS vars (proportional controls only matter in proportional mode) */
   .mask img{
     display:block; width:100%; height:100%;
     object-fit: var(--img-fit);
@@ -151,7 +146,6 @@ const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
     user-select:none; -webkit-user-drag:none;
   }
 
-  /* arrows positioned from frame center */
   .nav{
     -webkit-tap-highlight-color: transparent;
     position:absolute; left:50%; top:50%;
@@ -172,31 +166,37 @@ const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
 <div
   class={`carousel-host ${className}`}
   data-target={targetSelector}
-  data-items={JSON.stringify(normalized)}
-  data-nav={navigateOnClick ? "1" : "0"}
-  data-preload={enablePreload ? "1" : "0"}
-  data-mode={mode}
   style={`
+    --host-top:${top ?? "auto"};
+    --host-bottom:${bottom ?? "auto"};
+    --host-left:${left ?? "auto"};
+    --host-right:${right ?? "auto"};
+    --host-tx:${centerX ? "-50%" : offsetX};
+    --host-ty:${centerY ? "-50%" : offsetY};
     --z:${z};
-    --host-top:${top}; --host-bottom:${bottom}; --host-left:${left}; --host-right:${right};
-    --host-tx:${tx};   --host-ty:${ty};
-    --frameW:${frameMaxWidth};
-    --aspect:${frameAspect};
-    --radius:${frameRadius}px;
-    --frameScale:${frameScale};
-    --btnSize:${arrowButtonSize};
-    --iconW:${arrowIconWidth};
-    --img-fit:${imageFit};
-    --img-scale:${imageScale};
-    --img-pos-x:${imagePosX};
-    --img-pos-y:${imagePosY};
   `}
 >
-  <div class="shell">
-    <div class={`frame ${mode === "fill" ? "fill" : "prop"}`}>
-      <div class="mask">
-        <img id="cc-img" alt="" loading="eager" decoding="async" fetchpriority="high" />
-      </div>
+  <div
+    class="shell"
+    style={`--frameW:${frameMaxWidth};`}
+  >
+    <div
+      class={`frame ${mode}`}
+      style={`
+        --aspect:${frameAspect};
+        --radius:${frameRadius}px;
+        --frameScale:${frameScale};
+        --img-fit:${imageFit};
+        --img-scale:${imageScale};
+        --img-pos-x:${imagePosX};
+        --img-pos-y:${imagePosY};
+        --btnSize:${arrowButtonSize};
+        --iconW:${arrowIconWidth};
+      `}
+      data-items={JSON.stringify(normalized)}
+      data-nav={navigateOnClick ? "1" : "0"}
+    >
+      <div class="mask"><img alt="" /></div>
 
       <!-- LEFT -->
       <button
@@ -226,54 +226,44 @@ const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
   const host = document.currentScript?.previousElementSibling;
   if (!host) return;
 
-  // read items
   let items = [];
   try { items = JSON.parse(host.getAttribute('data-items') || '[]'); } catch {}
   if (!items.length) return;
 
-  const img   = host.querySelector('#cc-img');
+  const frame = host.querySelector('.frame');
+  const img   = host.querySelector('.mask img');
   const left  = host.querySelector('.nav.left');
   const right = host.querySelector('.nav.right');
-  const navGo = host.getAttribute('data-nav') === '1';
-  const doPreload = host.getAttribute('data-preload') !== '0';
-  const mode = host.getAttribute('data-mode') || 'fill';
+  const navGo = (frame?.getAttribute('data-nav') === '1');
 
-  // PRELOAD
+  if (!(frame && img)) return;
+
+  const mode = frame.classList.contains('proportional') ? 'proportional' : 'fill';
   const cache = new Map();
-  const inflight = new Map();
+
   function preload(src){
-    if (!doPreload || !src) return Promise.resolve(null);
-    if (cache.has(src)) return Promise.resolve(cache.get(src));
-    if (inflight.has(src)) return inflight.get(src);
-    const p = new Promise((resolve) => {
+    if (!src || cache.has(src)) return Promise.resolve(cache.get(src));
+    return new Promise(resolve => {
       const im = new Image();
-      im.decoding = 'async';
-      im.loading = 'eager';
+      im.onload  = () => { cache.set(src, im); resolve(im); };
+      im.onerror = () => { cache.set(src, null); resolve(null); };
       im.src = src;
-      const done = () => (im.decode?.() ?? Promise.resolve()).finally(() => { cache.set(src, im); resolve(im); });
-      if (im.complete) done();
-      else im.addEventListener('load', done, { once:true });
-    }).finally(() => inflight.delete(src));
-    inflight.set(src, p);
-    return p;
+    });
   }
-  function preloadNeighbors(idx){
-    const n = items.length;
-    if (!n) return;
-    const prev = (idx - 1 + n) % n, next = (idx + 1) % n;
+
+  function preloadNeighbors(i){
+    const prev = (i - 1 + items.length) % items.length;
+    const next = (i + 1) % items.length;
     preload(items[prev]?.src); preload(items[next]?.src);
   }
 
-  // RENDER
   let i = 0;
   function setImage(it){
     const src = it?.src; if (!src) return;
-    // per-item proportional overrides (only meaningful in proportional mode):
     if (mode === 'proportional') {
       const scale = it.scale ?? (parseFloat(getComputedStyle(host).getPropertyValue('--img-scale')) || 1);
       const posX  = it.posX  ?? (getComputedStyle(host).getPropertyValue('--img-pos-x') || '50%');
       const posY  = it.posY  ?? (getComputedStyle(host).getPropertyValue('--img-pos-y') || '50%');
-
       img.style.setProperty('--img-scale', String(scale));
       img.style.setProperty('--img-pos-x', posX.trim());
       img.style.setProperty('--img-pos-y', posY.trim());
@@ -299,79 +289,57 @@ const ty = `${centerY ? "-50%" : "0"} + ${offsetY}`;
     });
   }
 
-// ACTIVATION + ESC + WARM-UP (drop-in replacement)
-const targetSel = host.getAttribute('data-target') || '#enter-stage';
-const target = document.querySelector(targetSel);
+  // ACTIVATION + ESC + WARM-UP (unchanged)
+  const targetSel = host.getAttribute('data-target') || '#enter-stage';
+  const target = document.querySelector(targetSel);
+  const turnOn = () => { if (!host.classList.contains('is-on')) { host.classList.add('is-on'); render(); } };
 
-function turnOn(){
-  if (host.classList.contains('is-on')) return;
-  host.classList.add('is-on');
-  render();
-}
+  if (target?.getAttribute('data-entered') === 'true') turnOn();
+  window.addEventListener('enter:activated', (e) => {
+    try { const sel = e?.detail?.selector; if (!sel || sel === targetSel) turnOn(); }
+    catch { turnOn(); }
+  }, { passive:true });
 
-// 1) Immediate state (in case activation happened before mount)
-if (target?.getAttribute('data-entered') === 'true') turnOn();
-
-// 2) Custom event from HoldEnterButton
-window.addEventListener('enter:activated', (e) => {
-  const sel = e?.detail?.selector;
-  if (!sel || sel === targetSel) turnOn();
-}, { passive: true });
-
-// 3) Fallback: watch the target's attribute
-if (target){
-  const mo = new MutationObserver(() => {
-    if (target.getAttribute('data-entered') === 'true') turnOn();
-  });
-  mo.observe(target, { attributes: true, attributeFilter: ['data-entered'] });
-}
-
-// 4) ESC to close and fully restore the button
-window.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape') return;
-
-  host.classList.remove('is-on');
-  target?.removeAttribute('data-entered');
-
-  const wrap = document.querySelector('.enter-wrap');
-  if (!wrap) return;
-  wrap.style.display = '';
-
-  const btn  = wrap.querySelector('.enter-btn');
-  const rect = wrap.querySelector('.enter-stroke');
-
-  if (btn){
-    btn.removeAttribute('aria-disabled');
-    btn.setAttribute('aria-pressed','false');
-    btn.style.opacity = '';
-    btn.style.removeProperty('--press');
-  }
-
-  if (rect){
-    let total = 0;
-    try {
-      total = rect.getTotalLength();
-    } catch {
-      const W  = parseFloat(rect.getAttribute('width')  || '197');
-      const H  = parseFloat(rect.getAttribute('height') || '69');
-      const rx = parseFloat(wrap.getAttribute('data-rx') || '10');
-      const r  = Math.min(rx, Math.min(W, H) * 0.5);
-      total = 2 * (W + H - 2 * r) + 2 * Math.PI * r;
+  window.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    host.classList.remove('is-on');
+    target?.removeAttribute('data-entered');
+    const wrap = document.querySelector('.enter-wrap');
+    if (!wrap) return;
+    wrap.style.display = '';
+    const btn  = wrap.querySelector('.enter-btn');
+    const rect = wrap.querySelector('.enter-stroke');
+    if (btn){
+      btn.removeAttribute('aria-disabled');
+      btn.setAttribute('aria-pressed','false');
+      btn.style.opacity = '';
+      btn.style.removeProperty('--press');
     }
-    rect.style.opacity = '0';
-    rect.style.strokeDasharray = `0 ${total}`;
-  }
-}, { passive:true });
+    if (rect){
+      let total = 0;
+      try {
+        total = rect.getTotalLength();
+      } catch {
+        const W  = parseFloat(rect.getAttribute('width')  || '197');
+        const H  = parseFloat(rect.getAttribute('height') || '69');
+        const rx = parseFloat(wrap.getAttribute('data-rx') || '10');
+        const r  = Math.min(rx, Math.min(W, H) * 0.5);
+        total = 2 * (W + H - 2 * r) + 2 * Math.PI * r;
+      }
+      rect.style.strokeDashoffset = String(total);
+      rect.style.strokeDasharray  = `0 ${total}`;
+      rect.style.opacity = '0';
+    }
+  }, { passive:true });
 
-// 5) Preload warm-up
-if (doPreload) {
-  preload(items[0]?.src).then(() => {
-    if (host.classList.contains('is-on')) render();
-  });
-  preloadNeighbors(0);
-  const rest = () => { for (let k = 2; k < items.length; k++) preload(items[k]?.src); };
-  (window.requestIdleCallback ? requestIdleCallback(rest, { timeout: 1500 }) : setTimeout(rest, 300));
-}
+  // Preload warm-up
+  if (true) {
+    preload(items[0]?.src).then(() => {
+      if (host.classList.contains('is-on')) render();
+    });
+    preloadNeighbors(0);
+    const rest = () => { for (let k = 2; k < items.length; k++) preload(items[k]?.src); };
+    (window.requestIdleCallback ? requestIdleCallback(rest, { timeout: 1500 }) : setTimeout(rest, 300));
+  }
 })();
 </script>
-
