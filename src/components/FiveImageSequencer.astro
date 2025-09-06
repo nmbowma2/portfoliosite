@@ -1,29 +1,32 @@
 ---
 /**
  * FiveImageSequencer.astro
- * Plays 5 transparent PNGs in sequence, 40+ frames each, at configurable FPS.
- * - sources: array of 5 images (strings or imported assets)
- * - fps: number, default 24
- * - config: [{x,y,baseScale}, ...] one per image
+ * Adds scroll-driven opacity control.
  */
 const {
   sources = [],
   fps = 24,
   config = [
-    { x: 0,   y: 0,   baseScale: 1 },
-    { x: 0,   y: 0,   baseScale: 1 },
-    { x: 0,   y: 0,   baseScale: 1 },
-    { x: 0,   y: 0,   baseScale: 1 },
-    { x: 0,   y: 0,   baseScale: 1 },
+    { x: 0, y: 0, baseScale: 1 },
+    { x: 0, y: 0, baseScale: 1 },
+    { x: 0, y: 0, baseScale: 1 },
+    { x: 0, y: 0, baseScale: 1 },
+    { x: 0, y: 0, baseScale: 1 },
   ],
   class: className = "",
+
+  // Scroll opacity controls
+  fadeEnabled = true,         // turn on/off
+  fadeScrollVh = 100,         // distance in vh to reach full effect (increased for fade out)
+  fadeMode = "out",           // "in" (fade in as you scroll) or "out" (fade out as you scroll)
+  minOpacity = 0,             // starting opacity
+  maxOpacity = 1,             // ending opacity
 } = Astro.props;
 
 if (!Array.isArray(sources) || sources.length < 5) {
   console.warn("[FiveImageSequencer] expected 5 images, got", sources);
 }
 
-// Convert Astro ImageMetadata or string into plain URL (base-aware)
 const withBase = (u?: string) =>
   (typeof u === 'string' && u.startsWith('/'))
     ? import.meta.env.BASE_URL + u.slice(1)
@@ -35,21 +38,31 @@ const urls = sources.map((s: string | { src: string }) =>
 ---
 
 <style>
-  .seq5-wrap { position: relative; width: 100%; height: 100%; }
-  canvas.seq5 { display: block; width: 100%; height: 100%; background: rgba(0, 255, 0, 0.1); }
+  .seq5-wrap { 
+    position: relative; 
+    width: 100%; 
+    height: 100%; 
+  }
+  canvas.seq5 {
+    display: block; 
+    width: 100%; 
+    height: 100%;
+    opacity: 1;
+    /* smooth but responsive; tweak if you want snappier */
+    transition: opacity 250ms ease-out;
+  }
 </style>
 
-<div class={`seq5-wrap ${className}`}>
+<div class={`seq5-wrap ${className}`} data-fade-enabled={fadeEnabled ? "1" : "0"}>
   <canvas id="seq5" class="seq5" aria-hidden="true"></canvas>
 </div>
 
-<script define:vars={{ urls, fps, config }}>
+<script define:vars={{ urls, fps, config, fadeEnabled, fadeScrollVh, fadeMode, minOpacity, maxOpacity }}>
 // @ts-nocheck
 const RATE_UP   = .175;
 const RATE_DOWN = .125;
 const FRAMES_PER_IMAGE = 52;
-const SLOT0 = { HOLD_START: 0,  HOLD_END: 44 };
-const SLOT1 = { UP_START: 44,   UP_END: 49 };
+const SLOT1 = { UP_START: 44, UP_END: 49 };
 const SLOT2 = { DOWN_START: 49, DOWN_END: 52 };
 
 const URLS = urls;
@@ -57,7 +70,8 @@ const FPS  = fps;
 const CFG  = config;
 
 const canvas = document.getElementById("seq5");
-const ctx = canvas.getContext("2d");
+const host   = canvas?.parentElement;
+const ctx = canvas?.getContext("2d");
 let dpr = Math.max(1, window.devicePixelRatio || 1);
 let W = 0, H = 0;
 
@@ -74,24 +88,22 @@ function preload(){
       natural[i] = [im.naturalWidth, im.naturalHeight];
       if (images.every(Boolean)) start();
     };
+    im.onerror = () => console.error(`Failed to load image: ${u}`);
     im.src = u;
   });
 }
 
 function resize(){
-  const parent = canvas.parentElement;
+  const parent = canvas?.parentElement;
   if (!parent) return;
-
   const width = parent.offsetWidth;
   const height = parent.offsetHeight;
-
   W = Math.max(1, Math.floor(width * dpr));
   H = Math.max(1, Math.floor(height * dpr));
   canvas.width  = W;
   canvas.height = H;
+  applyOpacity(); // keep opacity correct on resize
 }
-
-
 
 const frameDurMs = 1000 / FPS;
 
@@ -122,50 +134,97 @@ function draw(now) {
   if (!img) return;
 
   const [nw, nh] = natural[imageIndex] || [img.naturalWidth, img.naturalHeight];
-  ctx.clearRect(0, 0, W, H);
 
-  const s = (CFG?.[imageIndex]?.baseScale || 1) * scaleFactorAtLocalFrame(localFrame);
-
-
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-    // 1. Calculate aspect ratios
   const imgAspect = nw / nh;
   const canvasAspect = W / H;
 
-  // 2. Find the scale factor to fit the canvas (with letterboxing)
-  let scaleToFit = canvasAspect > imgAspect
-    ? H / nh  // canvas is wider → fit by height
-    : W / nw; // canvas is taller → fit by width
-
-  // 3. Combine with baseScale and animation scale
+  let scaleToFit = canvasAspect > imgAspect ? H / nh : W / nw;
   const baseScale = CFG?.[imageIndex]?.baseScale || 1;
   const animScale = scaleFactorAtLocalFrame(localFrame);
   const finalScale = scaleToFit * baseScale * animScale;
 
-  // 4. Compute final drawn width & height
   const dw = nw * finalScale;
   const dh = nh * finalScale;
 
-  // 5. Center image, with optional pixel offsets
   const dx = (W - dw) / 2 + (CFG?.[imageIndex]?.x || 0) * dpr;
   const dy = (H - dh) / 2 + (CFG?.[imageIndex]?.y || 0) * dpr;
 
-  // 6. Clear and draw
   ctx.clearRect(0, 0, W, H);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(img, dx, dy, dw, dh);
-
 }
 
+/* ===== Scroll-driven opacity ===== */
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+
+function computeOpacity() {
+  if (!fadeEnabled) return 1;
+  
+  const viewportHeight = window.innerHeight;
+  const scrollY = window.scrollY || window.pageYOffset || 0;
+  const distancePx = viewportHeight * (fadeScrollVh / 100);
+  
+  let progress;
+  
+  if (fadeMode === "out") {
+    // Fade OUT as user scrolls down
+    // Start at full opacity, fade to minOpacity as scrollY increases
+    progress = clamp01(scrollY / distancePx);
+    
+    const span = (maxOpacity ?? 1) - (minOpacity ?? 0);
+    return (maxOpacity ?? 1) - span * progress;
+  } else if (fadeMode === "in") {
+    // Fade IN as user scrolls down  
+    // Start at minOpacity, fade to maxOpacity as scrollY increases
+    progress = clamp01(scrollY / distancePx);
+    
+    const span = (maxOpacity ?? 1) - (minOpacity ?? 0);
+    return (minOpacity ?? 0) + span * progress;
+  }
+  
+  return 1;
+}
+
+function applyOpacity() {
+  if (!canvas || !fadeEnabled) {
+    if (canvas) canvas.style.opacity = "1";
+    return;
+  }
+  
+  const opacity = computeOpacity();
+  canvas.style.opacity = opacity.toString();
+  
+  // Optional: pause animation when fully transparent to save resources
+  if (opacity <= 0.01 && raf) {
+    cancelAnimationFrame(raf);
+    raf = 0;
+  } else if (opacity > 0.01 && !raf && images.every(Boolean)) {
+    // Resume animation when visible again
+    start();
+  }
+}
+
+/* ===== Lifecycle ===== */
 function start() {
-  cancelAnimationFrame(raf);
+  if (raf) cancelAnimationFrame(raf);
   startTime = performance.now();
   raf = requestAnimationFrame(draw);
+  applyOpacity();
 }
 
-window.addEventListener("resize", resize, { passive:true });
-resize();
-preload();
+function onScroll(){ 
+  requestAnimationFrame(applyOpacity); 
+}
+
+// Initialize
+if (canvas && ctx) {
+  window.addEventListener("resize", resize, { passive: true });
+  window.addEventListener("scroll", onScroll, { passive: true });
+  resize();
+  preload();
+  applyOpacity();
+} else {
+  console.error("Canvas or context not found");
+}
 </script>

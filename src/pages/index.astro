@@ -12,7 +12,6 @@ import img2 from "../assets/photos/font_2.png";
 import img3 from "../assets/photos/font_3.png";
 import img4 from "../assets/photos/font_4.png";
 import img5 from "../assets/photos/font_5.png";
-import overlay1 from "../assets/photos/tv overlay_2.gif";
 import overlay2 from "../assets/photos/tv overlay.png";
 import rightIcon from "../assets/photos/lock.png";
 import opt4 from "../assets/photos/videos.png"
@@ -82,7 +81,7 @@ const seqConfig = [
         class="w-full h-full"
         fadeEnabled={true}
         fadeScrollVh={0.5} 
-        fadeMode="in"
+        fadeMode="out"
         minOpacity={0}
         maxOpacity={1}
       />
@@ -91,7 +90,7 @@ const seqConfig = [
 </Base>
 
 
-<ScrollSpacer size="120vh" />
+<ScrollSpacer size="60vh" />
 
 <section id="enter-stage" class="relative h-[60vh]">
   <!-- Co-transform overlay and slot so alignment never drifts -->
@@ -145,7 +144,7 @@ const seqConfig = [
   />
 </section>
 
-<ScrollSpacer size="50vh" />
+<ScrollSpacer size="25vh" />
 
 <style is:global>
   /* Simple centering helper; no sizing overrides */
