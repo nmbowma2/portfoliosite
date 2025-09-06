@@ -94,6 +94,7 @@ const iconUrl = icon ? toUrl(icon) : null;
   let rafId   = 0;
   let startTs = 0;
   let total   = 0;
+  let offset  = 0; // Fixed: Declare offset in proper scope
 
   function setDashStart(){
     if (!(rect instanceof SVGRectElement)) return;
@@ -114,16 +115,21 @@ const iconUrl = icon ? toUrl(icon) : null;
       total = 2 * (W + H - 2*r) + 2 * Math.PI * r;
     }
 
-    // Hard-code start point to TOP-CENTER
-    // path starts at top-left, so offset = half the top edge
-    const offset = -flatTop / 2;
+    // Set start point based on strokeStart prop
+    const startMode = wrap.getAttribute('data-start') || 'bottom-center';
+    if (startMode === 'top-center') {
+      // Start at top center
+      offset = -flatTop / 2;
+    } else {
+      // Start at bottom center (default)
+      offset = -(flatTop / 2);
+    }
 
     rect.style.strokeDashoffset = String(offset);
     rect.style.strokeDasharray  = `0 ${total}`;
     rect.style.opacity = '0';
   }
 
-  
   function reset(){
     holding = false;
     btn.setAttribute('aria-pressed','false');
@@ -144,12 +150,26 @@ const iconUrl = icon ? toUrl(icon) : null;
 
   function activate(){
     const target = document.querySelector(targetSel);
-    if (!target) return;
+    if (!target) {
+      console.warn(`HoldEnterButton: Target element not found: ${targetSel}`);
+      return;
+    }
+    
+    // Set the data attribute
     target.setAttribute('data-entered','true');
-    document.dispatchEvent(new CustomEvent('enter:activated', { detail: { selector: targetSel }}));
+    
+    // Dispatch the custom event
+    const event = new CustomEvent('enter:activated', { 
+      detail: { selector: targetSel },
+      bubbles: true,
+      cancelable: false
+    });
+    document.dispatchEvent(event);
+    
+    console.log('HoldEnterButton: Activated!', { targetSel, event }); // Debug log
+    
     if (hide) {
-      const wrap = document.querySelector('.enter-wrap');
-      if (wrap) wrap.style.display = 'none';
+      wrap.style.display = 'none';
     }
     maybeFadeOverlay();
   }
@@ -163,7 +183,7 @@ const iconUrl = icon ? toUrl(icon) : null;
 
     // solid arc + gap pattern
     rect.style.strokeDasharray = `${seg.toFixed(2)} ${(total - seg).toFixed(2)}`;
-    rect.style.strokeDashoffset = String(offset); // keep anchor fixed
+    rect.style.strokeDashoffset = String(offset);
     rect.style.opacity = '1';
 
     if (t >= durMs){
@@ -172,8 +192,7 @@ const iconUrl = icon ? toUrl(icon) : null;
       btn.style.setProperty('--press','1.02');
       activate();
     }
-}
-
+  }
 
   const down = () => {
     if (holding) return;
@@ -183,8 +202,12 @@ const iconUrl = icon ? toUrl(icon) : null;
     rect.style.opacity = '1';
     rafId = requestAnimationFrame(step);
   };
-  const up = () => { if (holding) reset(); };
+  
+  const up = () => { 
+    if (holding) reset(); 
+  };
 
+  // Event listeners
   btn.addEventListener('pointerdown', down, { passive:true });
   btn.addEventListener('pointerup', up, { passive:true });
   btn.addEventListener('pointercancel', up, { passive:true });

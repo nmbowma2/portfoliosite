@@ -11,7 +11,7 @@ export interface Props {
   width?: string;      // e.g. "64px"
 
   /** Hide after scrolling this many px (0 or undefined = never hide) */
-  hideAtPx?: number;   // e.g. 500
+  hideAtPx?: string;   // e.g. 500
   /** Width of the fade band around hideAtPx (in px) */
   fadeSpanPx?: number; // e.g. 160
   class?: string;
@@ -69,7 +69,7 @@ const iH  = typeof src === "string" ? undefined : src.height;
   height={iH}
   class={`scroll-arrow ${className}`}
   style={`--amp:${amp}; --period:${period}; --scale:${scale}; --bottom:${bottom}; --z:${z}; --w:${width}; --alpha:1;`}
-  data-hideat={String(hideAtPx || 0)}
+  data-hideat={hideAtPx || 0}
   data-fadespan={String(fadeSpanPx)}
   loading="eager"
   decoding="sync"
