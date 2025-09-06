@@ -14,23 +14,18 @@ import img4 from "../assets/photos/font_4.png";
 import img5 from "../assets/photos/font_5.png";
 import overlay2 from "../assets/photos/tv overlay.png";
 import rightIcon from "../assets/photos/lock.png";
-import opt4 from "../assets/photos/videos.png"
-import opt2 from "../assets/photos/music.png"
-import opt3 from "../assets/photos/picture.png"
-import bigarrow from "../assets/photos/arrow_white.png"
-
-const screenLeft   = '34.5%';
-const screenTop    = '21%';
-const screenWidth  = '30%';
-const screenHeight = '40%';
+import c1 from "../assets/photos/videos.png"
+import c2 from "../assets/photos/music.png"
+import c3 from "../assets/photos/picture.png"
+import bigarrow from "../assets/photos/arrow_black.png"
 
 const withBase = (p: string) => import.meta.env.BASE_URL + p.replace(/^\//, '');
 
 /* carousel items */
 const items = [
-  { src: opt4.src, href: withBase("videos/"), label: "videos" },
-  { src: opt2.src, href: withBase("music/"),  label: "Music"  },
-  { src: opt3.src, href: withBase("photos/"), label: "photos" },
+  { src: c1.src, href: withBase("videos/"), label: "videos" },
+  { src: c2.src, href: withBase("music/"),  label: "Music"  },
+  { src: c3.src, href: withBase("photos/"), label: "photos" },
 ];
 const sources = [img1, img2, img3, img4, img5];
 const seqConfig = [
@@ -93,6 +88,7 @@ const seqConfig = [
 <ScrollSpacer size="60vh" />
 
 <!-- TV Section with responsive scaling -->
+<!-- TV Section with responsive scaling -->
 <section id="enter-stage" class="tv-section">
   <div class="tv-container">
     <!-- TV Overlay Background -->
@@ -126,14 +122,14 @@ const seqConfig = [
         imageFit="contain"  
         imageScale={1}     
 
-        leftX="-126%"  
-        leftY="341.5%"  
-        leftScale={1.05}
-        rightX="126%"  
-        rightY="340%"  
-        rightScale={1.05}
-        arrowButtonSize="56px"
-        arrowIconWidth="34px"
+        leftX="-200%"       
+        leftY="650%"        
+        leftScale={6}       
+        rightX="200%"       
+        rightY="650%"       
+        rightScale={6}      
+        arrowButtonSize="18px"    
+        arrowIconWidth="28px"   
 
         navigateOnClick={false}
         enablePreload={true}
@@ -152,7 +148,6 @@ const seqConfig = [
     strokeStart="bottom-center"
   />
 </section>
-
 <ScrollSpacer size="25vh" />
 
 <style is:global>

@@ -3,96 +3,86 @@ export interface Item {
   src: string | { src: string };
   label?: string;
   href?: string;
-  /** optional per-item proportional overrides (used only in proportional mode) */
   scale?: number;
-  posX?: string; // e.g. "50%", "40%"
-  posY?: string; // e.g. "50%", "55%"
+  posX?: string;
+  posY?: string;
 }
 
 export interface Props {
   items?: Item[];
   targetSelector?: string;
-
-  /** Host positioning (relative to where you place the component) */
   top?: string; bottom?: string; left?: string; right?: string;
   centerX?: boolean; centerY?: boolean;
   offsetX?: string; offsetY?: string;
   z?: number;
-
-  /** Frame sizing / look */
-  frameMaxWidth?: string;           // e.g. "min(92vw, 960px)" or "100%"
-  frameAspect?: string;             // used in proportional mode
-  frameRadius?: number;             // px
-  frameScale?: number;              // used in proportional mode
-
-  /** Arrow art & placement (relative to frame center) */
+  frameMaxWidth?: string;
+  frameAspect?: string;
+  frameRadius?: number;
+  frameScale?: number;
   leftArrow?: string | { src: string };
   rightArrow?: string | { src: string };
   leftX?: string;  leftY?: string;  leftScale?: number;
   rightX?: string; rightY?: string; rightScale?: number;
-  arrowButtonSize?: string;         // e.g. "56px"
-  arrowIconWidth?: string;          // e.g. "34px"
-
-  /** Behavior */
+  arrowButtonSize?: string;
+  arrowIconWidth?: string;
   navigateOnClick?: boolean;
   enablePreload?: boolean;
-
-  /**
-   * FILL MODE:
-   * "fill"         -> frame fills the slot exactly (ignores aspect/scale; simplest autosize)
-   * "proportional" -> frame keeps aspect; use imageFit/imageScale/pos to tune
-   */
   mode?: "fill" | "proportional";
-
-  /** proportional-mode image tuning (ignored in fill mode) */
   imageFit?: "cover" | "contain";
   imageScale?: number;
   imagePosX?: string;
   imagePosY?: string;
-
   class?: string;
 }
 
 const {
   items = [],
   targetSelector = "#enter-stage",
-
   top, bottom, left, right,
   centerX = false, centerY = false,
   offsetX = "0", offsetY = "0", z = 60,
-
   frameMaxWidth = "100%",
   frameAspect = "16 / 9",
   frameRadius = 12,
   frameScale = 1,
-
   leftArrow, rightArrow,
-  leftX = "-56%",  leftY = "0%",   leftScale = 1.05,
-  rightX = "56%",  rightY = "0%",  rightScale = 1.05,
-  arrowButtonSize = "56px",
-  arrowIconWidth = "34px",
-
+  leftX = "-50%",  leftY = "120%",   leftScale = 1,
+  rightX = "50%",  rightY = "120%",  rightScale = 1,
+  arrowButtonSize = "40px",
+  arrowIconWidth = "24px",
   navigateOnClick = false,
   enablePreload = true,
   mode = "fill",
-
   imageFit = "cover",
   imageScale = 1.02,
   imagePosX = "50%",
   imagePosY = "50%",
-
   class: className = "",
 } = Astro.props;
 
-const withBase = (u?: string) =>
-  (typeof u === 'string' && u.startsWith('/'))
-    ? import.meta.env.BASE_URL + u.slice(1)
-    : u;
+const withBase = (u?: string) => {
+  if (typeof u !== 'string') return u;
+  
+  // If it already includes the base URL or is an absolute URL, return as-is
+  if (u.includes(import.meta.env.BASE_URL) || u.startsWith('http') || u.startsWith('/@')) {
+    return u;
+  }
+  
+  // Only prepend base URL if it starts with /
+  if (u.startsWith('/')) {
+    return import.meta.env.BASE_URL + u.slice(1);
+  }
+  
+  return u;
+};
 
-const toUrl = (x: any) => typeof x === 'string' ? withBase(x) : x?.src;
+const toUrl = (x: any) => {
+  if (typeof x === 'string') return x;
+  return x?.src || x;
+};
 
 const normalized = items.map(it => ({
-  src: toUrl(it.src),
+  src: typeof it.src === 'string' ? it.src : it.src?.src,
   label: it.label || "",
   href: typeof it.href === "string" ? withBase(it.href) : (it.href || ""),
   scale: it.scale,
@@ -116,15 +106,17 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     transform: translate(calc(var(--host-tx)), calc(var(--host-ty)));
     z-index: var(--z);
   }
-  .carousel-host.is-on{ opacity:1; pointer-events:auto; }
+  .carousel-host.is-on{ 
+    opacity:1; 
+    pointer-events:auto;
+  }
 
   .shell{ position:relative; width: var(--frameW); height: 100%; }
 
-  /* FRAME: two modes */
   .frame {
     position:relative; width:100%; height:100%;
     border-radius: var(--radius);
-    overflow:hidden;
+    overflow:visible; /* Changed from hidden to allow arrows below */
   }
   .frame.fill { transform: none; }
   .frame.proportional {
@@ -150,22 +142,51 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     -webkit-tap-highlight-color: transparent;
     position:absolute; left:50%; top:50%;
     width: var(--btnSize); height: var(--btnSize);
-    margin:0; padding:0; border:0; border-radius:9999px; background:transparent; cursor:pointer;
+    margin:0; padding:0; border:0; border-radius:0; 
+    background: transparent; /* Completely transparent */
+    cursor:pointer;
     display:grid; place-items:center;
     transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(var(--s));
-    filter: brightness(var(--b,1));
-    transition: filter 120ms ease, transform 120ms ease;
+    opacity: 0.7;
+    transition: opacity 120ms ease, transform 120ms ease;
   }
-  .nav:hover  { --b:.92; }
-  .nav:active { --b:.85; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(calc(var(--s) * 1.05)); }
-  .nav img{ width: var(--iconW); height:auto; display:block; pointer-events:none; }
+  .nav:hover  { 
+    opacity: 1; 
+    transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(calc(var(--s) * 1.1));
+  }
+  .nav:active { 
+    opacity: 0.8; 
+    transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(calc(var(--s) * 0.95)); 
+  }
+  .nav img{ 
+    width: var(--iconW); 
+    height:auto; 
+    display:block; 
+    pointer-events:none;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
   .nav.left  img{ transform: rotate(90deg); }
   .nav.right img{ transform: rotate(-90deg); }
+  
+  /* Debug status - remove in production */
+  .debug-status {
+    position: absolute;
+    top: -25px;
+    left: 0;
+    background: black;
+    color: white;
+    padding: 2px 8px;
+    font-size: 12px;
+    border-radius: 3px;
+    z-index: 1000;
+    display: none; /* Hide by default */
+  }
 </style>
 
 <div
   class={`carousel-host ${className}`}
   data-target={targetSelector}
+  data-items={JSON.stringify(normalized)}
   style={`
     --host-top:${top ?? "auto"};
     --host-bottom:${bottom ?? "auto"};
@@ -176,6 +197,7 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     --z:${z};
   `}
 >
+  <div class="debug-status">CAROUSEL: WAITING</div>
   <div
     class="shell"
     style={`--frameW:${frameMaxWidth};`}
@@ -193,29 +215,28 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
         --btnSize:${arrowButtonSize};
         --iconW:${arrowIconWidth};
       `}
-      data-items={JSON.stringify(normalized)}
       data-nav={navigateOnClick ? "1" : "0"}
     >
       <div class="mask"><img alt="" /></div>
 
-      <!-- LEFT -->
+      <!-- LEFT ARROW - Positioned below and to the left -->
       <button
         class="nav left"
         type="button"
         aria-label="Previous"
         style={`--x:${leftX}; --y:${leftY}; --s:${leftScale};`}
       >
-        {lUrl ? <img src={lUrl} alt="" /> : <span aria-hidden="true" style="font-size:28px;line-height:1">‹</span>}
+        {lUrl ? <img src={lUrl} alt="" /> : <span aria-hidden="true" style="font-size:20px;line-height:1">‹</span>}
       </button>
 
-      <!-- RIGHT -->
+      <!-- RIGHT ARROW - Positioned below and to the right -->
       <button
         class="nav right"
         type="button"
         aria-label="Next"
         style={`--x:${rightX}; --y:${rightY}; --s:${rightScale};`}
       >
-        {rUrl ? <img src={rUrl} alt="" /> : <span aria-hidden="true" style="font-size:28px;line-height:1">›</span>}
+        {rUrl ? <img src={rUrl} alt="" /> : <span aria-hidden="true" style="font-size:20px;line-height:1">›</span>}
       </button>
     </div>
   </div>
@@ -223,27 +244,37 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
 
 <script is:inline>
 (() => {
-  console.log('ChoiceCarousel: Script initializing...');
+  console.log('🔄 ChoiceCarousel: Script starting...');
   
   const host = document.currentScript?.previousElementSibling;
+  const debugStatus = host?.querySelector('.debug-status');
+  
+  function updateStatus(status) {
+    if (debugStatus) debugStatus.textContent = `CAROUSEL: ${status}`;
+    console.log(`🎠 ChoiceCarousel: ${status}`);
+  }
+  
   if (!host) {
-    console.error('ChoiceCarousel: Host element not found');
+    console.error('❌ ChoiceCarousel: Host element not found');
     return;
   }
 
-  console.log('ChoiceCarousel: Host element found:', host);
+  updateStatus('HOST FOUND');
 
   let items = [];
   try { 
     const itemsData = host.getAttribute('data-items') || '[]';
     items = JSON.parse(itemsData);
-    console.log('ChoiceCarousel: Items parsed:', items);
+    updateStatus(`${items.length} ITEMS LOADED`);
   } catch (e) {
-    console.error('ChoiceCarousel: Failed to parse items:', e);
+    console.error('❌ ChoiceCarousel: Failed to parse items:', e);
+    updateStatus('PARSE ERROR');
+    return;
   }
   
   if (!items.length) {
-    console.warn('ChoiceCarousel: No items found');
+    console.warn('⚠️ ChoiceCarousel: No items found');
+    updateStatus('NO ITEMS');
     return;
   }
 
@@ -251,208 +282,110 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
   const img   = host.querySelector('.mask img');
   const left  = host.querySelector('.nav.left');
   const right = host.querySelector('.nav.right');
-  const navGo = (frame?.getAttribute('data-nav') === '1');
 
   if (!(frame && img)) {
-    console.error('ChoiceCarousel: Required elements not found', { frame, img });
+    console.error('❌ ChoiceCarousel: Required elements not found', { frame, img });
+    updateStatus('ELEMENTS MISSING');
     return;
   }
 
-  console.log('ChoiceCarousel: Elements found successfully');
-
-  const mode = frame.classList.contains('proportional') ? 'proportional' : 'fill';
-  const cache = new Map();
-
-  function preload(src){
-    if (!src || cache.has(src)) return Promise.resolve(cache.get(src));
-    return new Promise(resolve => {
-      const im = new Image();
-      im.onload  = () => { 
-        console.log('ChoiceCarousel: Image preloaded:', src);
-        cache.set(src, im); 
-        resolve(im); 
-      };
-      im.onerror = () => { 
-        console.error('ChoiceCarousel: Failed to load image:', src);
-        cache.set(src, null); 
-        resolve(null); 
-      };
-      im.src = src;
-    });
-  }
-
-  function preloadNeighbors(i){
-    const prev = (i - 1 + items.length) % items.length;
-    const next = (i + 1) % items.length;
-    preload(items[prev]?.src); 
-    preload(items[next]?.src);
-  }
+  updateStatus('ELEMENTS READY');
 
   let i = 0;
-  function setImage(it){
-    console.log('ChoiceCarousel: Setting image:', it);
-    const src = it?.src; 
-    if (!src) {
-      console.warn('ChoiceCarousel: No src found for item:', it);
-      return;
-    }
-    
-    if (mode === 'proportional') {
-      const scale = it.scale ?? (parseFloat(getComputedStyle(host).getPropertyValue('--img-scale')) || 1);
-      const posX  = it.posX  ?? (getComputedStyle(host).getPropertyValue('--img-pos-x') || '50%');
-      const posY  = it.posY  ?? (getComputedStyle(host).getPropertyValue('--img-pos-y') || '50%');
-      img.style.setProperty('--img-scale', String(scale));
-      img.style.setProperty('--img-pos-x', posX.trim());
-      img.style.setProperty('--img-pos-y', posY.trim());
-    }
-    
-    const cached = cache.get(src);
-    if (cached?.complete) { 
-      img.src = cached.src; 
-      img.alt = it?.label || '';
-      console.log('ChoiceCarousel: Used cached image');
-      return; 
-    }
-    
-    preload(src).then(im => {
-      if (!im) { 
-        img.src = src; 
-        img.alt = it?.label || '';
-        console.log('ChoiceCarousel: Set image directly (no cache)');
-        return; 
-      }
-      if (items[i]?.src === src) { 
-        img.src = im.src; 
-        img.alt = it?.label || '';
-        console.log('ChoiceCarousel: Set preloaded image');
-      }
-    });
+  function setImage(it) {
+    const src = it?.src;
+    if (!src) return;
+    console.log('🖼️ Setting image:', src);
+    img.src = src;
+    img.alt = it?.label || '';
   }
   
-  function render(){ 
-    console.log('ChoiceCarousel: Rendering index:', i);
-    const it = items[i]; 
-    setImage(it); 
-    preloadNeighbors(i); 
+  function render() { 
+    const it = items[i];
+    console.log(`🎨 Rendering item ${i}:`, it);
+    setImage(it);
+    updateStatus(`SHOWING ${i + 1}/${items.length}`);
   }
   
-  function next(n){ 
+  function next(n) { 
     i = (i + n + items.length) % items.length; 
-    console.log('ChoiceCarousel: Next called, new index:', i);
+    console.log(`➡️ Navigation: new index ${i}`);
     render(); 
   }
 
-  // Event listeners for navigation
+  // Navigation
   left?.addEventListener('click',  () => next(-1));
   right?.addEventListener('click', () => next(+1));
 
-  if (navGo){
-    img.style.cursor = 'pointer';
-    img.addEventListener('click', () => {
-      const href = items[i]?.href;
-      if (href) {
-        console.log('ChoiceCarousel: Navigating to:', href);
-        window.location.href = href;
-      }
-    });
-  }
-
   // ACTIVATION LOGIC
   const targetSel = host.getAttribute('data-target') || '#enter-stage';
-  console.log('ChoiceCarousel: Target selector:', targetSel);
+  console.log('🎯 Target selector:', targetSel);
   
   const target = document.querySelector(targetSel);
-  console.log('ChoiceCarousel: Target element:', target);
+  console.log('🎯 Target element:', target);
   
   const turnOn = () => { 
-    console.log('ChoiceCarousel: Turning on...');
-    if (!host.classList.contains('is-on')) { 
-      host.classList.add('is-on'); 
-      render();
-      console.log('ChoiceCarousel: Successfully turned on and rendered');
-    } else {
-      console.log('ChoiceCarousel: Already on');
-    }
+    console.log('🟢 TURNING ON CAROUSEL');
+    updateStatus('ACTIVATING...');
+    host.classList.add('is-on');
+    render();
+    updateStatus('ACTIVE');
   };
 
   // Check if already activated
   if (target?.getAttribute('data-entered') === 'true') {
-    console.log('ChoiceCarousel: Target already has data-entered=true, turning on immediately');
+    console.log('✅ Target already has data-entered=true');
+    updateStatus('ALREADY ACTIVE');
     turnOn();
   }
 
   // Listen for activation event
   const handleActivation = (e) => {
-    console.log('ChoiceCarousel: Received enter:activated event:', e);
+    console.log('🚀 RECEIVED ACTIVATION EVENT:', e);
+    console.log('🚀 Event type:', e.type);
+    console.log('🚀 Event detail:', e.detail);
+    
     try { 
       const sel = e?.detail?.selector; 
-      console.log('ChoiceCarousel: Event selector:', sel, 'Target selector:', targetSel);
+      console.log('🚀 Event selector:', sel, 'Target selector:', targetSel);
       if (!sel || sel === targetSel) {
-        console.log('ChoiceCarousel: Selector matches, turning on');
+        console.log('✅ Selector matches - ACTIVATING!');
         turnOn();
       } else {
-        console.log('ChoiceCarousel: Selector does not match');
+        console.log('❌ Selector mismatch');
       }
     }
     catch (err) { 
-      console.error('ChoiceCarousel: Error in activation handler:', err);
+      console.error('💥 Error in activation handler:', err);
       turnOn(); 
     }
   };
 
-  window.addEventListener('enter:activated', handleActivation, { passive: true });
-  document.addEventListener('enter:activated', handleActivation, { passive: true });
-
-  // ESC key handler
-  window.addEventListener('keydown', e => {
-    if (e.key !== 'Escape') return;
-    console.log('ChoiceCarousel: Escape pressed, turning off');
-    host.classList.remove('is-on');
-    target?.removeAttribute('data-entered');
-    
-    // Reset button state
-    const wrap = document.querySelector('.enter-wrap');
-    if (!wrap) return;
-    wrap.style.display = '';
-    const btn  = wrap.querySelector('.enter-btn');
-    const rect = wrap.querySelector('.enter-stroke');
-    if (btn){
-      btn.removeAttribute('aria-disabled');
-      btn.setAttribute('aria-pressed','false');
-      btn.style.opacity = '';
-      btn.style.removeProperty('--press');
-    }
-    if (rect){
-      let total = 0;
-      try {
-        total = rect.getTotalLength();
-      } catch {
-        const W  = parseFloat(rect.getAttribute('width')  || '197');
-        const H  = parseFloat(rect.getAttribute('height') || '69');
-        const rx = parseFloat(wrap.getAttribute('data-rx') || '10');
-        const r  = Math.min(rx, Math.min(W, H) * 0.5);
-        total = 2 * (W + H - 2 * r) + 2 * Math.PI * r;
-      }
-      rect.style.strokeDashoffset = String(-total/2); // Fixed offset calculation
-      rect.style.strokeDasharray  = `0 ${total}`;
-      rect.style.opacity = '0';
-    }
-  }, { passive:true });
-
-  // Preload warm-up
-  console.log('ChoiceCarousel: Starting preload warm-up...');
-  preload(items[0]?.src).then(() => {
-    console.log('ChoiceCarousel: First image preloaded');
-    if (host.classList.contains('is-on')) render();
-  });
-  preloadNeighbors(0);
+  // Listen on BOTH window and document
+  window.addEventListener('enter:activated', handleActivation);
+  document.addEventListener('enter:activated', handleActivation);
   
-  const rest = () => { 
-    console.log('ChoiceCarousel: Preloading remaining images...');
-    for (let k = 2; k < items.length; k++) preload(items[k]?.src); 
-  };
-  (window.requestIdleCallback ? requestIdleCallback(rest, { timeout: 1500 }) : setTimeout(rest, 300));
+  // Also listen for custom events that might be dispatched differently
+  window.addEventListener('enterActivated', handleActivation);
+  document.addEventListener('enterActivated', handleActivation);
 
-  console.log('ChoiceCarousel: Initialization complete');
+  console.log('🎧 All event listeners attached');
+  updateStatus('WAITING FOR ACTIVATION');
+
+  // Show first image immediately for testing
+  setTimeout(() => {
+    if (items[0]) {
+      console.log('🖼️ Loading first image for preview');
+      setImage(items[0]);
+    }
+  }, 100);
+
+  console.log('✅ ChoiceCarousel: Initialization complete');
+  
+  // Global function for testing
+  window.testCarouselActivation = () => {
+    console.log('🔧 Window function called');
+    turnOn();
+  };
 })();
 </script>
