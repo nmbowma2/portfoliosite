@@ -15,6 +15,9 @@ import img5 from "../assets/photos/font_5.png";
 import overlay1 from "../assets/photos/tv overlay_2.gif";
 import overlay2 from "../assets/photos/tv overlay.png";
 import rightIcon from "../assets/photos/lock.png";
+import opt4 from "../assets/photos/videos.png"
+import opt2 from "../assets/photos/music.png"
+import opt3 from "../assets/photos/picture.png"
 
 const screenLeft   = '34.5%';
 const screenTop    = '21%';
@@ -25,7 +28,7 @@ const withBase = (p: string) => import.meta.env.BASE_URL + p.replace(/^\//, '');
 
 /* carousel items */
 const items = [
-  { src: opt1.src, href: withBase("videos/"), label: "videos" },
+  { src: opt4.src, href: withBase("videos/"), label: "videos" },
   { src: opt2.src, href: withBase("music/"),  label: "Music"  },
   { src: opt3.src, href: withBase("photos/"), label: "photos" },
 ];
