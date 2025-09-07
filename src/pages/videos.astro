@@ -1,0 +1,292 @@
+---
+// src/pages/videos.astro
+---
+
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/portfoliosite/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Videos - Portfolio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Futura:wght@400&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="return-button" id="returnBtn">return</div>
+    <div class="video-container" id="videoContainer"></div>
+</body>
+</html>
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        background-color: black;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        font-family: 'Futura', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    .return-button {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        color: red;
+        font-size: 10px;
+        font-family: 'Futura', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        cursor: pointer;
+        z-index: 1000;
+        user-select: none;
+        transition: opacity 0.2s ease;
+    }
+
+    .return-button:hover {
+        opacity: 0.7;
+    }
+
+    .video-container {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+    }
+
+    .video-box {
+        position: absolute;
+        background-color: #1a1a1a;
+        border-radius: 8px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        cursor: pointer;
+        overflow: hidden;
+        border: 2px solid #333;
+    }
+
+    .video-box:hover {
+        transform: scale(1.02);
+        box-shadow: 0 8px 32px rgba(255, 255, 255, 0.1);
+        border-color: #555;
+    }
+
+    .video-iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        border-radius: 6px;
+    }
+
+    .blank-thumbnail {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        font-size: 14px;
+        font-family: 'Futura', sans-serif;
+        text-align: center;
+        position: relative;
+    }
+
+    .blank-thumbnail::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 60px;
+        height: 60px;
+        border: 2px solid #444;
+        border-radius: 50%;
+    }
+
+    .blank-thumbnail::after {
+        content: '▶';
+        position: absolute;
+        top: 50%;
+        left: 52%;
+        transform: translate(-50%, -50%);
+        color: #555;
+        font-size: 20px;
+    } 
+
+    /* Responsive sizing for different screen sizes */
+    @media (max-width: 768px) {
+        .return-button {
+            top: 15px;
+            left: 15px;
+        }
+    }
+</style>
+
+<script is:inline>
+(() => {
+    console.log('🎬 Videos page initializing...');
+    
+    const returnBtn = document.getElementById('returnBtn');
+    const videoContainer = document.getElementById('videoContainer');
+    
+    // Sample YouTube video IDs - replace these with your actual video IDs
+    const videoIds = [
+        'WiFsMZuCX7U',
+        'vh77Yvnk178',
+        'PHxJKbK3a14', 
+        'n4t7pJDpXeU',
+        // Add more video IDs here as needed
+    ];
+    
+    // Return button functionality
+    returnBtn?.addEventListener('click', () => {
+        // Navigate back to the main portfolio page
+        const baseUrl = window.location.pathname.includes('/portfoliosite/') ? '/portfoliosite/' : '/';
+        window.location.href = baseUrl;
+    });
+
+    function generateRandomLayout() {
+        console.log('🎲 generateRandomLayout called');
+        
+        if (!videoContainer) {
+            console.error('❌ videoContainer not found!');
+            return;
+        }
+        
+        console.log('✅ videoContainer found, clearing existing boxes...');
+        
+        // Clear existing boxes
+        videoContainer.innerHTML = '';
+        
+        // Generate 5-8 random boxes
+        const numBoxes = Math.floor(Math.random() * 4) + 5; // 5-8 boxes
+        console.log(`🎲 Generating ${numBoxes} video boxes`);
+        
+        const boxes = [];
+        const minBuffer = 30; // Minimum space between boxes
+        const maxAttempts = 100; // Prevent infinite loops
+        
+        // Get viewport dimensions with some padding
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const padding = 50;
+        
+        console.log(`📐 Viewport: ${viewportWidth}x${viewportHeight}, padding: ${padding}`);
+        
+        for (let i = 0; i < numBoxes; i++) {
+            let attempts = 0;
+            let validPosition = false;
+            let newBox;
+            
+            while (!validPosition && attempts < maxAttempts) {
+                // Random dimensions for each box (maintaining 16:9 aspect ratio for videos)
+                const width = Math.floor(Math.random() * 250) + 200; // 200-450px wide
+                const height = Math.floor(width * 9 / 16); // 16:9 aspect ratio
+                
+                // Random position
+                const x = Math.floor(Math.random() * (viewportWidth - width - padding * 2)) + padding;
+                const y = Math.floor(Math.random() * (viewportHeight - height - padding * 2)) + padding;
+                
+                newBox = {
+                    x: x,
+                    y: y,
+                    width: width,
+                    height: height
+                };
+                
+                // Check if this box overlaps with any existing boxes
+                validPosition = true;
+                for (const existingBox of boxes) {
+                    if (boxesOverlap(newBox, existingBox, minBuffer)) {
+                        validPosition = false;
+                        break;
+                    }
+                }
+                
+                attempts++;
+            }
+            
+            // If we found a valid position, create the box
+            if (validPosition && newBox) {
+                boxes.push(newBox);
+                
+                const boxElement = document.createElement('div');
+                boxElement.className = 'video-box';
+                boxElement.style.left = `${newBox.x}px`;
+                boxElement.style.top = `${newBox.y}px`;
+                boxElement.style.width = `${newBox.width}px`;
+                boxElement.style.height = `${newBox.height}px`;
+                boxElement.style.position = 'absolute';
+                
+                // Determine if this box should have a video or blank thumbnail
+                if (i < videoIds.length) {
+                    // Create YouTube iframe
+                    const iframe = document.createElement('iframe');
+                    iframe.className = 'video-iframe';
+                    iframe.src = `https://www.youtube.com/embed/${videoIds[i]}?autoplay=0&mute=1&controls=1&rel=0&modestbranding=1`;
+                    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+                    iframe.allowFullscreen = true;
+                    iframe.loading = 'lazy';
+                    
+                    boxElement.appendChild(iframe);
+                    console.log(`🎥 Created video box ${i + 1} with YouTube video: ${videoIds[i]}`);
+                } else {
+                    // Create blank thumbnail
+                    const thumbnail = document.createElement('div');
+                    thumbnail.className = 'blank-thumbnail';
+                    
+                    boxElement.appendChild(thumbnail);
+                    boxElement.addEventListener('click', () => {
+                        console.log(`📹 Blank thumbnail ${i + 1} clicked - Ready for new video`);
+                        // Here you could add functionality to upload or add a new video
+                    });
+                    
+                    console.log(`📷 Created blank thumbnail ${i + 1}`);
+                }
+                
+                videoContainer.appendChild(boxElement);
+                console.log(`✅ Positioned box ${i + 1} at (${newBox.x}, ${newBox.y}) - ${newBox.width}x${newBox.height}`);
+            } else {
+                console.warn(`⚠️ Could not place video box ${i + 1} after ${maxAttempts} attempts`);
+            }
+        }
+        
+        console.log(`🎬 Layout complete: ${boxes.length} boxes created`);
+        console.log('📦 Container children:', videoContainer.children.length);
+    }
+    
+    function boxesOverlap(box1, box2, buffer) {
+        return !(
+            box1.x + box1.width + buffer < box2.x ||
+            box2.x + box2.width + buffer < box1.x ||
+            box1.y + box1.height + buffer < box2.y ||
+            box2.y + box2.height + buffer < box1.y
+        );
+    }
+    
+    // Generate layout on page load
+    window.addEventListener('load', () => {
+        console.log('🚀 Page loaded, generating random layout...');
+        generateRandomLayout();
+    });
+    
+    // Regenerate layout on window resize to ensure boxes fit
+    window.addEventListener('resize', () => {
+        console.log('📏 Window resized, regenerating layout...');
+        setTimeout(generateRandomLayout, 100);
+    });
+    
+    // Optional: Add keyboard shortcut to regenerate layout (for testing)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'r' && e.ctrlKey) {
+            e.preventDefault();
+            console.log('🔄 Manual layout regeneration triggered');
+            generateRandomLayout();
+        }
+    });
+    
+    console.log('✅ Videos page script initialized');
+})();
+</script>

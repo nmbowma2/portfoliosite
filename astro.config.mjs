@@ -4,6 +4,6 @@ import tailwind from "@tailwindcss/vite";
 
 export default defineConfig({
   site: 'https://nmbowma2.github.io',
-  base: '/portfoliosite',
+  base: '/portfoliosite/',
   vite: { plugins: [tailwind()] },
 });

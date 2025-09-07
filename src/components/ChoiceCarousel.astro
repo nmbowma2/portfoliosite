@@ -10,12 +10,12 @@ export interface Item {
 
 export interface Props {
   items?: Item[];
-  items2?: Item[]; // NEW: Secondary image items
+  items2?: Item[];
   targetSelector?: string;
   top?: string; bottom?: string; left?: string; right?: string;
   centerX?: boolean; centerY?: boolean;
   offsetX?: string; offsetY?: string;
-  verticalOffset?: string; // NEW: Move entire carousel up/down
+  verticalOffset?: string;
   z?: number;
   frameMaxWidth?: string;
   frameAspect?: string;
@@ -34,7 +34,6 @@ export interface Props {
   imageScale?: number;
   imagePosX?: string;
   imagePosY?: string;
-  // NEW: Secondary image controls
   secondaryImageOffset?: string;
   secondaryImageWidth?: string;
   secondaryImageHeight?: string;
@@ -84,9 +83,12 @@ const withBase = (u?: string) => {
     return u;
   }
   
-  // Only prepend base URL if it starts with /
+  // For relative URLs starting with /, properly combine with base URL
   if (u.startsWith('/')) {
-    return import.meta.env.BASE_URL + u.slice(1);
+    const baseUrl = import.meta.env.BASE_URL.endsWith('/') 
+      ? import.meta.env.BASE_URL.slice(0, -1)  // Remove trailing slash
+      : import.meta.env.BASE_URL;
+    return baseUrl + u;  // This keeps the leading slash from u
   }
   
   return u;
@@ -145,7 +147,7 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
   .frame {
     position:relative; width:100%; height:100%;
     border-radius: var(--radius);
-    overflow:visible; /* Changed from hidden to allow arrows below */
+    overflow:visible;
   }
   .frame.fill { transform: none; }
   .frame.proportional {
@@ -157,6 +159,12 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
   .mask{
     position:absolute; inset:0;
     clip-path: inset(0 round var(--radius));
+    cursor: pointer;
+    transition: transform 120ms ease;
+  }
+
+  .mask:hover {
+    transform: scale(1.02);
   }
 
   .mask img{
@@ -177,7 +185,12 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     border-radius: var(--secondary-radius);
     overflow: hidden;
     opacity: 0;
-    transition: opacity 200ms ease;
+    transition: opacity 200ms ease, transform 120ms ease;
+    cursor: pointer;
+  }
+
+  .secondary-image:hover {
+    transform: translateX(-50%) scale(1.05);
   }
 
   .secondary-image.loaded {
@@ -198,12 +211,13 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     position:absolute; left:50%; top:50%;
     width: var(--btnSize); height: var(--btnSize);
     margin:0; padding:0; border:0; border-radius:0; 
-    background: transparent; /* Completely transparent */
+    background: transparent;
     cursor:pointer;
     display:grid; place-items:center;
     transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(var(--s));
     opacity: 0.85;
     transition: opacity 120ms ease, transform 120ms ease;
+    z-index: 10;
   }
   .nav:hover  { 
     opacity: 1; 
@@ -223,7 +237,6 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
   .nav.left  img{ transform: rotate(0deg); }
   .nav.right img{ transform: rotate(-180deg); }
   
-  /* Debug status - remove in production */
   .debug-status {
     position: absolute;
     top: -25px;
@@ -234,7 +247,7 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     font-size: 12px;
     border-radius: 3px;
     z-index: 1000;
-    display: none; /* Hide by default */
+    display: none;
   }
 </style>
 
@@ -281,14 +294,17 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
       `}
       data-nav={navigateOnClick ? "1" : "0"}
     >
-      <div class="mask"><img alt="" /></div>
-
-      <!-- Secondary image -->
-      <div class="secondary-image">
+      <!-- Clickable main image -->
+      <div class="mask" data-clickable="main">
         <img alt="" />
       </div>
 
-      <!-- LEFT ARROW - Positioned below and to the left -->
+      <!-- Clickable secondary image -->
+      <div class="secondary-image" data-clickable="secondary">
+        <img alt="" />
+      </div>
+
+      <!-- LEFT ARROW -->
       <button
         class="nav left"
         type="button"
@@ -298,7 +314,7 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
         {lUrl ? <img src={lUrl} alt="" /> : <span aria-hidden="true" style="font-size:20px;line-height:1">‹</span>}
       </button>
 
-      <!-- RIGHT ARROW - Positioned below and to the right -->
+      <!-- RIGHT ARROW -->
       <button
         class="nav right"
         type="button"
@@ -313,18 +329,18 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
 
 <script is:inline>
 (() => {
-  console.log('🔄 ChoiceCarousel: Script starting...');
+  console.log('🔄 ClickableChoiceCarousel: Script starting...');
   
   const host = document.currentScript?.previousElementSibling;
   const debugStatus = host?.querySelector('.debug-status');
   
   function updateStatus(status) {
     if (debugStatus) debugStatus.textContent = `CAROUSEL: ${status}`;
-    console.log(`🎠 ChoiceCarousel: ${status}`);
+    console.log(`🎠 ClickableChoiceCarousel: ${status}`);
   }
   
   if (!host) {
-    console.error('❌ ChoiceCarousel: Host element not found');
+    console.error('❌ ClickableChoiceCarousel: Host element not found');
     return;
   }
 
@@ -342,13 +358,13 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     
     updateStatus(`${items.length} MAIN ITEMS, ${items2.length} SECONDARY ITEMS LOADED`);
   } catch (e) {
-    console.error('❌ ChoiceCarousel: Failed to parse items:', e);
+    console.error('❌ ClickableChoiceCarousel: Failed to parse items:', e);
     updateStatus('PARSE ERROR');
     return;
   }
   
   if (!items.length) {
-    console.warn('⚠️ ChoiceCarousel: No items found');
+    console.warn('⚠️ ClickableChoiceCarousel: No items found');
     updateStatus('NO ITEMS');
     return;
   }
@@ -357,11 +373,12 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
   const img = host.querySelector('.mask img');
   const secondaryImg = host.querySelector('.secondary-image img');
   const secondaryContainer = host.querySelector('.secondary-image');
+  const mainImageContainer = host.querySelector('.mask');
   const left = host.querySelector('.nav.left');
   const right = host.querySelector('.nav.right');
 
   if (!(frame && img)) {
-    console.error('❌ ChoiceCarousel: Required elements not found', { frame, img });
+    console.error('❌ ClickableChoiceCarousel: Required elements not found', { frame, img });
     updateStatus('ELEMENTS MISSING');
     return;
   }
@@ -399,7 +416,6 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     console.log(`🎨 Rendering main item ${i}:`, it);
     setImage(it);
     
-    // Render secondary image if available
     if (items2.length > 0) {
       const it2 = items2[i2];
       console.log(`🎨 Rendering secondary item ${i2}:`, it2);
@@ -412,7 +428,6 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
   function next(n) { 
     i = (i + n + items.length) % items.length;
     
-    // Also advance secondary image if available
     if (items2.length > 0) {
       i2 = (i2 + n + items2.length) % items2.length;
     }
@@ -421,9 +436,46 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     render(); 
   }
 
+  // Image click handlers
+  function handleImageClick(isSecondary = false) {
+    const currentItems = isSecondary ? items2 : items;
+    const currentIndex = isSecondary ? i2 : i;
+    const currentItem = currentItems[currentIndex];
+    
+    if (currentItem?.href) {
+      console.log(`🔗 Image clicked, navigating to: ${currentItem.href}`);
+      
+      // Check if it's an external URL
+      if (currentItem.href.startsWith('http')) {
+        window.open(currentItem.href, '_blank', 'noopener,noreferrer');
+      } else {
+        window.location.href = currentItem.href;
+      }
+    } else {
+      console.log('ℹ️ Image clicked but no href available');
+    }
+  }
+
+  // Add click listeners to images
+  mainImageContainer?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    handleImageClick(false);
+  });
+
+  secondaryContainer?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    handleImageClick(true);
+  });
+
   // Navigation
-  left?.addEventListener('click', () => next(-1));
-  right?.addEventListener('click', () => next(+1));
+  left?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    next(-1);
+  });
+  right?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    next(+1);
+  });
 
   // ACTIVATION LOGIC
   const targetSel = host.getAttribute('data-target') || '#enter-stage';
@@ -440,18 +492,14 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     updateStatus('ACTIVE');
   };
 
-  // Check if already activated
   if (target?.getAttribute('data-entered') === 'true') {
     console.log('✅ Target already has data-entered=true');
     updateStatus('ALREADY ACTIVE');
     turnOn();
   }
 
-  // Listen for activation event
   const handleActivation = (e) => {
     console.log('🚀 RECEIVED ACTIVATION EVENT:', e);
-    console.log('🚀 Event type:', e.type);
-    console.log('🚀 Event detail:', e.detail);
     
     try { 
       const sel = e?.detail?.selector; 
@@ -469,11 +517,8 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     }
   };
 
-  // Listen on BOTH window and document
   window.addEventListener('enter:activated', handleActivation);
   document.addEventListener('enter:activated', handleActivation);
-  
-  // Also listen for custom events that might be dispatched differently
   window.addEventListener('enterActivated', handleActivation);
   document.addEventListener('enterActivated', handleActivation);
 
@@ -492,9 +537,8 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     }
   }, 100);
 
-  console.log('✅ ChoiceCarousel: Initialization complete');
+  console.log('✅ ClickableChoiceCarousel: Initialization complete');
   
-  // Global function for testing
   window.testCarouselActivation = () => {
     console.log('🔧 Window function called');
     turnOn();
