@@ -6,11 +6,14 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "thumbs": "node scripts/make-thumbs.mjs"
+
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.12",
     "astro": "^5.13.3",
+    "sharp": "^0.34.3",
     "tailwindcss": "^4.1.12"
   }
 }

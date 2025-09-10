@@ -1,0 +1,384 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Fotos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Futura:wght@400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 16px;
+            background-color: black;
+            font-family: 'Futura', Arial, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .return-link {
+            position: fixed;
+            top: 36px;
+            left: 36px;
+            color: red;
+            font-size: 16px;
+            text-decoration: none;
+            z-index: 2000;
+            transition: transform 0.2s ease;
+        }
+
+        .return-link:hover {
+            transform: scale(1.05);
+        }
+        
+/* One place, responsive auto-fill at 56px squares (tweak to taste) */
+/* Thumbs: fixed-size square cells */
+        .photos-container{
+            display:grid;
+            grid-template-columns: repeat(auto-fill, 120px); /* pick your thumb size */
+            grid-auto-rows: 200px;                            /* 👈 locks the row height */
+            gap:3px;
+            justify-content:center;
+            width:100%;
+            max-width:1400px;
+            margin:0 auto;
+            padding:60px 20px 20px;
+        
+        }
+
+        .photo-item {
+            width: 120px;
+            height: 120px;
+            overflow: hidden;
+            border-radius: 4px;
+            background-color: #111;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+
+            cursor: pointer;   /* hand cursor */
+            position: relative; /* needed for overlay positioning */
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        /* Overlay layer */
+        .photo-item::after {
+            content: "";
+            position: absolute;
+            inset: 0; /* top:0, right:0, bottom:0, left:0 */
+            background: rgba(0, 0, 0, 0.25); /* translucent black */
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none; /* don't block clicks */
+            border-radius: 4px;
+        }
+
+        /* Hover state: show overlay */
+        .photo-item:hover::after {
+            opacity: 1;
+        }
+        .photo-item:hover::before {
+            opacity: 1;
+        }
+
+
+
+
+
+        .photo-item:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+        }
+
+
+        .photo-item.not-found {
+            background: linear-gradient(45deg, #222, #333);
+            border: 1px solid #444;
+        }
+
+        .photo-item.not-found::before {
+            content: "?";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        /* Mobile: 3-4 columns */
+        @media (max-width: 480px)   { .photos-container { grid-template-columns: repeat(auto-fill, 160px); gap: 4px; } }
+        @media (481px <= width <= 768px)  { .photos-container { grid-template-columns: repeat(auto-fill, 180px); gap: 6px; } }
+        @media (769px <= width <= 1200px) { .photos-container { grid-template-columns: repeat(auto-fill, 200px); gap: 8px; } }
+        @media (min-width: 1201px)  { .photos-container { grid-template-columns: repeat(auto-fill, 250px); gap: 10px; } }
+
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+            transform: scale(0.8);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-image {
+            width: auto;
+            height: auto;
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.5);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .loading-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid #333;
+            border-top: 2px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+
+        /* Error state */
+        .photo-item.error {
+            background: #2a0a0a;
+            border: 1px solid #441111;
+        }
+
+        .photo-item.error::before {
+            content: "✕";
+            color: #aa4444;
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="return-link">return</a>
+    
+    <div class="photos-container" id="photosContainer">
+        <!-- Photos will be dynamically generated here -->
+    </div>
+
+    <!-- Modal for full-size images -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content">
+            <div class="modal-close" id="modalClose">×</div>
+            <img class="modal-image" id="modalImage" alt="Full size photo">
+        </div>
+    </div>
+    <script>
+        function PhotoGallery() {
+            
+            const container = document.getElementById('photosContainer');
+            const modal = document.getElementById('modalOverlay');
+            const modalImage = document.getElementById('modalImage') as HTMLImageElement;
+            const modalClose = document.getElementById('modalClose');
+
+            const folderPath = '/portfoliosite/fotos/';
+            const fallbackImage = '/portfoliosite/imagenotfound.jpeg';
+            let photos = [];
+            
+            function init() {
+                setupEventListeners();
+                generatePhotoGrid();
+                
+                window.addEventListener('resize', function() {
+                    generatePhotoGrid();
+                });
+            }
+
+            function setupEventListeners() {
+                // Modal close events
+                if (modalClose) {
+                    modalClose.addEventListener('click', closeModal);
+                }
+                
+                if (modal) {
+                    modal.addEventListener('click', function(evt) {
+                        if (evt.target === modal) closeModal();
+                    });
+                }
+                
+                // Keyboard events
+                document.addEventListener('keydown', function(evt) {
+                    if (evt.key === 'Escape') closeModal();
+                });
+
+                // Return link functionality
+                const returnLink = document.querySelector('.return-link');
+                if (returnLink) {
+                    returnLink.addEventListener('click', function(evt) {
+                        evt.preventDefault();
+                        if (window.history.length > 1) {
+                            window.history.back();
+                        } else {
+                            window.location.href = '/';
+                        }
+                    });
+                }
+            }
+
+            function generatePhotoGrid() {
+                // Clear existing photos
+                if (container) {
+                    container.innerHTML = '';
+                }
+                
+                // Generate photo list
+                photos = generatePhotoList();
+                
+                // Create photo items for all photos
+                for (let i = 0; i < photos.length; i++) {
+                    const photoItem = document.createElement('div');
+                    photoItem.className = 'photo-item';
+                    createPhotoItem(photoItem, photos[i]);
+                    
+                    if (container) {
+                        container.appendChild(photoItem);
+                    }
+                }
+            }
+
+            function generatePhotoList() {
+                const photoList = [];
+                
+                // Generate photos 1-50
+                for (let i = 1; i <= 50; i++) {
+                    photoList.push(folderPath + 'photo' + i + '.jpg');
+                }
+                
+                return photoList;
+            }
+            function createPhotoItem(containerElement: HTMLDivElement, imagePath: string) {
+                const thumbPath = imagePath.replace('/fotos/', '/fotos/thumbs/');
+
+                // Preload thumb, then paint background (avoids double-requests)
+                const t = new Image();
+                t.onload = () => { containerElement.style.backgroundImage = `url("${thumbPath}")`; };
+                t.onerror = () => { containerElement.classList.add('error'); };
+                t.src = thumbPath;
+
+                // Clicking opens FULL-RES original
+                containerElement.addEventListener('click', () => {
+                    if (!containerElement.classList.contains('error')) openModal(imagePath);
+                });
+            }
+ 
+
+
+
+
+            function openModal(imagePath: string) {
+                if (modal) {
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                    
+                    // Reset modal image
+                    if (modalImage) {
+                        modalImage.src = '';
+                        modalImage.style.opacity = '0.5';
+                        
+                        // Load full-size image
+                        const fullImage = new Image();
+                        fullImage.onload = function() {
+                            if (modalImage) {
+                                modalImage.src = imagePath;
+                                modalImage.style.opacity = '1';
+                            }
+                        };
+                        fullImage.onerror = function() {
+                            if (modalImage) {
+                                modalImage.src = fallbackImage;
+                                modalImage.style.opacity = '1';
+                            }
+                        };
+                        fullImage.src = imagePath;
+                    }
+                }
+            }
+
+            function closeModal() {
+                if (modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                    
+                    // Clear image source to stop loading
+                    setTimeout(function() {
+                        if (modal && !modal.classList.contains('active') && modalImage) {
+                            modalImage.src = '';
+                        }
+                    }, 300);
+                }
+            }
+
+            // Initialize
+            init();
+        }
+
+        // Initialize gallery when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            PhotoGallery();
+        });
+    </script>
+</body>
+</html>
