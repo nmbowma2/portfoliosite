@@ -11,7 +11,7 @@
 
         body {
             margin: 0;
-            padding: 16px;
+            padding: 8px;
             background-color: black;
             font-family: 'Futura', Arial, sans-serif;
             min-height: 100vh;
@@ -37,9 +37,7 @@
 /* Thumbs: fixed-size square cells */
         .photos-container{
             display:grid;
-            grid-template-columns: repeat(auto-fill, 120px); /* pick your thumb size */
             grid-auto-rows: 200px;                            /* 👈 locks the row height */
-            gap:3px;
             justify-content:center;
             width:100%;
             max-width:1400px;
@@ -49,18 +47,16 @@
         }
 
         .photo-item {
-            width: 120px;
-            height: 120px;
             overflow: hidden;
             border-radius: 4px;
             background-color: #111;
             background-size: cover;
-            background-position: center;
             background-repeat: no-repeat;
 
             cursor: pointer;   /* hand cursor */
             position: relative; /* needed for overlay positioning */
             transition: transform 0.2s ease, box-shadow 0.2s ease;
+            
         }
 
         /* Overlay layer */
@@ -82,17 +78,10 @@
         .photo-item:hover::before {
             opacity: 1;
         }
-
-
-
-
-
         .photo-item:hover {
             transform: scale(1.02);
             box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
         }
-
-
         .photo-item.not-found {
             background: linear-gradient(45deg, #222, #333);
             border: 1px solid #444;
@@ -109,10 +98,23 @@
             font-weight: bold;
         }
         /* Mobile: 3-4 columns */
-        @media (max-width: 480px)   { .photos-container { grid-template-columns: repeat(auto-fill, 140px); gap: 4px; } }
-        @media (481px <= width <= 768px)  { .photos-container { grid-template-columns: repeat(auto-fill, 160px); gap: 6px; } }
-        @media (769px <= width <= 1200px) { .photos-container { grid-template-columns: repeat(auto-fill, 180px); gap: 8px; } }
-        @media (min-width: 1201px)  { .photos-container { grid-template-columns: repeat(auto-fill, 225px); gap: 10px; } }
+        @media (max-width: 480px)   {
+            .photos-container { grid-template-columns: repeat(auto-fill, 140px); gap: 4px; }
+            .photo-item { width: 140px; height: 140px; }
+        }
+        @media (481px <= width <= 768px)  {
+            .photos-container { grid-template-columns: repeat(auto-fill, 160px); gap: 6px; } 
+            .photo-item { width: 160px; height: 160px; }
+        }
+        @media (769px <= width <= 1200px) { 
+            .photos-container { grid-template-columns: repeat(auto-fill, 180px); gap: 8px; } 
+            .photo-item { width: 180px; height: 180px; }
+        }
+        @media (min-width: 1201px)  { 
+            .photos-container { grid-template-columns: repeat(auto-fill, 225px); gap: 10px; } 
+            .photo-item { width: 225px; height: 225px; }
+
+        }
 
 
         /* Modal Overlay */
@@ -210,6 +212,8 @@
             content: "✕";
             color: #aa4444;
         }
+
+
     </style>
 </head>
 <body>
