@@ -108,38 +108,32 @@ const seqConfig = [
 
     <!-- TV Screen Content Area -->
     <div class="tv-screen">
+
       <ChoiceCarousel
+        
         class="carousel-content"
         targetSelector="#enter-stage"
         items={items}
-        items2 = {items2}
+        items2={items2}
         leftArrow={bigarrow}
         rightArrow={bigarrow}
 
-        top="0" 
-        left="0" 
-        right="0" 
-        bottom="0"
-        centerX={false} 
-        centerY={false}
-        offsetX="0" 
-        offsetY="0"
+        top="0" left="0" right="0" bottom="0"
+        centerX={false} centerY={false} offsetX="0" offsetY="0"
 
         mode="fill"
         frameMaxWidth="100%"
         frameRadius={12}
-        imageFit="contain"  
-        imageScale={1}     
-
+        imageFit="contain"
+        imageScale={1}
         navigateOnClick={false}
 
-        verticalOffset = "-2.5vh",
-
-        secondaryImageOffset = "-28vh",
-        secondaryImageWidth = "27vw",
-        secondaryImageHeight = "25vw",
-        leftX = "-10vw",
-        rightX = "10vw",
+        verticalOffset="-2.5%"         
+        secondaryImageOffset="-100%"    
+        secondaryImageWidth="200%"        
+        secondaryImageHeight="180%"     
+        leftX="-400%"                     
+        rightX="400%"                    
              
       />
     </div>
@@ -193,15 +187,24 @@ const seqConfig = [
     width: 30%;
     height: 40%;
     z-index: 1;
+    --scale: 1;
   }
 
   .carousel-content {
+    position: relative;
     display: grid;
     place-items: center;
     height: 100%;
     width: 100%;
   }
 
+  .carousel-design-canvas {
+    position: absolute;
+    width: 1200px;  /* your desktop design width */
+    height: 900px;  /* your desktop design height */
+    transform-origin: top left;
+  }
+  
   /* Responsive scaling for smaller screens */
   @media (max-width: 768px) {
     .tv-section {
