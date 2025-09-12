@@ -423,10 +423,20 @@ const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
   }
 
   // Preload first few images immediately
+
+  const idle = (typeof window !== 'undefined' && 'requestIdleCallback' in window)
+    ? window.requestIdleCallback
+    : (cb) => setTimeout(cb, 0);
+
   if (enablePreload) {
-    requestIdleCallback(() => {
-      items.slice(0, 3).forEach(item => preloadImage(item.src));
-      items2.slice(0, 3).forEach(item => preloadImage(item.src));
+    idle(() => {
+      try {
+        items.slice(0, 3).forEach(item => preloadImage(item.src));
+        items2.slice(0, 3).forEach(item => preloadImage(item.src));
+      } catch (e) {
+        // don’t let preload failures block activation
+        console.warn('preload error', e);
+      }
     });
   }
   
