@@ -39,6 +39,7 @@ export interface Props {
   secondaryImageHeight?: string;
   secondaryImageFit?: "cover" | "contain";
   secondaryImageRadius?: number;
+  debug?: boolean;
   class?: string;
 }
 
@@ -72,33 +73,30 @@ const {
   secondaryImageHeight = "100px",
   secondaryImageFit = "cover",
   secondaryImageRadius = 8,
+  debug = false,
   class: className = "",
 } = Astro.props;
 
 const withBase = (u?: string) => {
   if (typeof u !== 'string') return u;
   
-  // If it already includes the base URL or is an absolute URL, return as-is
   if (u.includes(import.meta.env.BASE_URL) || u.startsWith('http') || u.startsWith('/@')) {
     return u;
   }
   
-  // For relative URLs starting with /, properly combine with base URL
   if (u.startsWith('/')) {
     const baseUrl = import.meta.env.BASE_URL.endsWith('/') 
-      ? import.meta.env.BASE_URL.slice(0, -1)  // Remove trailing slash
+      ? import.meta.env.BASE_URL.slice(0, -1)
       : import.meta.env.BASE_URL;
-    return baseUrl + u;  // This keeps the leading slash from u
+    return baseUrl + u;
   }
   
   return u;
 };
 
-const toUrl = (x: any) => {
-  if (typeof x === 'string') return x;
-  return x?.src || x;
-};
+const toUrl = (x: any) => typeof x === 'string' ? x : x?.src || x;
 
+// Pre-normalize data to avoid runtime processing
 const normalized = items.map(it => ({
   src: typeof it.src === 'string' ? it.src : it.src?.src,
   label: it.label || "",
@@ -119,6 +117,9 @@ const normalized2 = items2.map(it => ({
 
 const lUrl = leftArrow ? toUrl(leftArrow) : null;
 const rUrl = rightArrow ? toUrl(rightArrow) : null;
+
+// Generate unique ID for this instance
+const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
 ---
 
 <style>
@@ -250,13 +251,26 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
     z-index: 1000;
     display: none;
   }
+
+  .debug .debug-status {
+    display: block;
+  }
+
+  /* Preload hidden images */
+  .preload-images {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
 </style>
 
 <div
-  class={`carousel-host ${className}`}
+  class={`carousel-host ${debug ? 'debug' : ''} ${className}`}
   data-target={targetSelector}
-  data-items={JSON.stringify(normalized)}
-  data-items2={JSON.stringify(normalized2)}
+  data-instance-id={instanceId}
   style={`
     --host-top:${top ?? "auto"};
     --host-bottom:${bottom ?? "auto"};
@@ -295,14 +309,14 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
       `}
       data-nav={navigateOnClick ? "1" : "0"}
     >
-      <!-- Clickable main image -->
+      <!-- Main image -->
       <div class="mask" data-clickable="main">
-        <img alt="" />
+        <img alt="" loading="eager" />
       </div>
 
-      <!-- Clickable secondary image -->
+      <!-- Secondary image -->
       <div class="secondary-image" data-clickable="secondary">
-        <img alt="" />
+        <img alt="" loading="lazy" />
       </div>
 
       <!-- LEFT ARROW -->
@@ -312,7 +326,7 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
         aria-label="Previous"
         style={`--x:${leftX}; --y:${leftY}; --s:${leftScale};`}
       >
-        {lUrl ? <img src={lUrl} alt="" /> : <span aria-hidden="true" style="font-size:20px;line-height:1">‹</span>}
+        {lUrl ? <img src={lUrl} alt="" loading="lazy" /> : <span aria-hidden="true" style="font-size:20px;line-height:1">‹</span>}
       </button>
 
       <!-- RIGHT ARROW -->
@@ -322,227 +336,239 @@ const rUrl = rightArrow ? toUrl(rightArrow) : null;
         aria-label="Next"
         style={`--x:${rightX}; --y:${rightY}; --s:${rightScale};`}
       >
-        {rUrl ? <img src={rUrl} alt="" /> : <span aria-hidden="true" style="font-size:20px;line-height:1">›</span>}
+        {rUrl ? <img src={rUrl} alt="" loading="lazy" /> : <span aria-hidden="true" style="font-size:20px;line-height:1">›</span>}
       </button>
     </div>
   </div>
+
+  <!-- Preload images for faster navigation -->
+  {enablePreload && (
+    <div class="preload-images">
+      {normalized.slice(0, 3).map((item) => (
+        <img src={item.src} alt="" loading="lazy" />
+      ))}
+      {normalized2.slice(0, 3).map((item) => (
+        <img src={item.src} alt="" loading="lazy" />
+      ))}
+    </div>
+  )}
 </div>
 
-<script is:inline>
+<script is:inline define:vars={{ normalized, normalized2, targetSelector, instanceId, debug, enablePreload }}>
 (() => {
-  console.log('🔄 ClickableChoiceCarousel: Script starting...');
+  const log = debug ? console.log.bind(console, `🎠[${instanceId}]`) : () => {};
+  const warn = debug ? console.warn.bind(console, `⚠️[${instanceId}]`) : () => {};
+  const error = debug ? console.error.bind(console, `❌[${instanceId}]`) : () => {};
+
+  log('Initializing...');
   
-  const host = document.currentScript?.previousElementSibling;
-  const debugStatus = host?.querySelector('.debug-status');
-  
-  function updateStatus(status) {
-    if (debugStatus) debugStatus.textContent = `CAROUSEL: ${status}`;
-    console.log(`🎠 ClickableChoiceCarousel: ${status}`);
-  }
+  // Use the passed instance ID to find our specific carousel
+  const host = document.querySelector(`[data-instance-id="${instanceId}"]`);
   
   if (!host) {
-    console.error('❌ ClickableChoiceCarousel: Host element not found');
+    error('Host element not found');
     return;
   }
 
-  updateStatus('HOST FOUND');
+  // Cache DOM elements immediately
+  const elements = {
+    debugStatus: host.querySelector('.debug-status'),
+    frame: host.querySelector('.frame'),
+    img: host.querySelector('.mask img'),
+    secondaryImg: host.querySelector('.secondary-image img'),
+    secondaryContainer: host.querySelector('.secondary-image'),
+    mainImageContainer: host.querySelector('.mask'),
+    left: host.querySelector('.nav.left'),
+    right: host.querySelector('.nav.right')
+  };
 
-  let items = [];
-  let items2 = [];
-  
-  try { 
-    const itemsData = host.getAttribute('data-items') || '[]';
-    items = JSON.parse(itemsData);
-    
-    const items2Data = host.getAttribute('data-items2') || '[]';
-    items2 = JSON.parse(items2Data);
-    
-    updateStatus(`${items.length} MAIN ITEMS, ${items2.length} SECONDARY ITEMS LOADED`);
-  } catch (e) {
-    console.error('❌ ClickableChoiceCarousel: Failed to parse items:', e);
-    updateStatus('PARSE ERROR');
+  function updateStatus(status) {
+    if (elements.debugStatus && debug) {
+      elements.debugStatus.textContent = `CAROUSEL: ${status}`;
+    }
+    log(status);
+  }
+
+  // Validate required elements
+  if (!elements.frame || !elements.img) {
+    error('Required elements missing');
     return;
   }
+
+  // Use passed data directly (no JSON parsing needed)
+  const items = normalized || [];
+  const items2 = normalized2 || [];
   
   if (!items.length) {
-    console.warn('⚠️ ClickableChoiceCarousel: No items found');
+    warn('No items provided');
     updateStatus('NO ITEMS');
     return;
   }
 
-  const frame = host.querySelector('.frame');
-  const img = host.querySelector('.mask img');
-  const secondaryImg = host.querySelector('.secondary-image img');
-  const secondaryContainer = host.querySelector('.secondary-image');
-  const mainImageContainer = host.querySelector('.mask');
-  const left = host.querySelector('.nav.left');
-  const right = host.querySelector('.nav.right');
+  updateStatus(`Ready: ${items.length} main, ${items2.length} secondary`);
 
-  if (!(frame && img)) {
-    console.error('❌ ClickableChoiceCarousel: Required elements not found', { frame, img });
-    updateStatus('ELEMENTS MISSING');
-    return;
-  }
+  let currentIndex = 0;
+  let currentSecondaryIndex = 0;
+  let isActive = false;
 
-  updateStatus('ELEMENTS READY');
-
-  let i = 0;
-  let i2 = 0;
+  // Image loading optimization
+  const imageCache = new Map();
   
-  function setImage(it) {
-    const src = it?.src;
-    if (!src) return;
-    console.log('🖼️ Setting main image:', src);
+  function preloadImage(src) {
+    if (!enablePreload || imageCache.has(src)) return;
+    
+    const img = new Image();
     img.src = src;
-    img.alt = it?.label || '';
-  }
-  
-  function setSecondaryImage(it) {
-    if (!secondaryImg || !secondaryContainer) return;
-    
-    const src = it?.src;
-    if (!src) {
-      secondaryContainer.classList.remove('loaded');
-      return;
-    }
-    
-    console.log('🖼️ Setting secondary image:', src);
-    secondaryImg.src = src;
-    secondaryImg.alt = it?.label || '';
-    secondaryContainer.classList.add('loaded');
-  }
-  
-  function render() { 
-    const it = items[i];
-    console.log(`🎨 Rendering main item ${i}:`, it);
-    setImage(it);
-    
-    if (items2.length > 0) {
-      const it2 = items2[i2];
-      console.log(`🎨 Rendering secondary item ${i2}:`, it2);
-      setSecondaryImage(it2);
-    }
-    
-    updateStatus(`SHOWING ${i + 1}/${items.length}${items2.length ? `, SEC: ${i2 + 1}/${items2.length}` : ''}`);
-  }
-  
-  function next(n) { 
-    i = (i + n + items.length) % items.length;
-    
-    if (items2.length > 0) {
-      i2 = (i2 + n + items2.length) % items2.length;
-    }
-    
-    console.log(`➡️ Navigation: new main index ${i}, secondary index ${i2}`);
-    render(); 
+    imageCache.set(src, img);
   }
 
-  // Image click handlers
+  // Preload first few images immediately
+  if (enablePreload) {
+    requestIdleCallback(() => {
+      items.slice(0, 3).forEach(item => preloadImage(item.src));
+      items2.slice(0, 3).forEach(item => preloadImage(item.src));
+    });
+  }
+  
+  function setImage(item, isSecondary = false) {
+    if (!item?.src) return;
+    
+    const img = isSecondary ? elements.secondaryImg : elements.img;
+    const container = isSecondary ? elements.secondaryContainer : null;
+    
+    if (!img) return;
+    
+    // Use cached image if available for faster loading
+    const cachedImg = imageCache.get(item.src);
+    if (cachedImg && cachedImg.complete) {
+      img.src = item.src;
+    } else {
+      img.src = item.src;
+      if (enablePreload) preloadImage(item.src);
+    }
+    
+    img.alt = item.label || '';
+    
+    if (container) {
+      container.classList.add('loaded');
+    }
+  }
+  
+  function render() {
+    if (!isActive) return;
+    
+    const item = items[currentIndex];
+    const secondaryItem = items2[currentSecondaryIndex];
+    
+    setImage(item, false);
+    
+    if (items2.length > 0 && secondaryItem) {
+      setImage(secondaryItem, true);
+    }
+    
+    updateStatus(`Showing ${currentIndex + 1}/${items.length}${items2.length ? `, sec: ${currentSecondaryIndex + 1}/${items2.length}` : ''}`);
+    
+    // Preload next images
+    if (enablePreload) {
+      const nextIndex = (currentIndex + 1) % items.length;
+      const nextSecondaryIndex = (currentSecondaryIndex + 1) % items2.length;
+      
+      if (items[nextIndex]) preloadImage(items[nextIndex].src);
+      if (items2[nextSecondaryIndex]) preloadImage(items2[nextSecondaryIndex].src);
+    }
+  }
+  
+  function navigate(direction) {
+    currentIndex = (currentIndex + direction + items.length) % items.length;
+    
+    if (items2.length > 0) {
+      currentSecondaryIndex = (currentSecondaryIndex + direction + items2.length) % items2.length;
+    }
+    
+    render();
+  }
+
   function handleImageClick(isSecondary = false) {
     const currentItems = isSecondary ? items2 : items;
-    const currentIndex = isSecondary ? i2 : i;
-    const currentItem = currentItems[currentIndex];
+    const currentIdx = isSecondary ? currentSecondaryIndex : currentIndex;
+    const currentItem = currentItems[currentIdx];
     
     if (currentItem?.href) {
-      console.log(`🔗 Image clicked, navigating to: ${currentItem.href}`);
-      
-      // Check if it's an external URL
       if (currentItem.href.startsWith('http')) {
         window.open(currentItem.href, '_blank', 'noopener,noreferrer');
       } else {
         window.location.href = currentItem.href;
       }
-    } else {
-      console.log('ℹ️ Image clicked but no href available');
     }
   }
 
-  // Add click listeners to images
-  mainImageContainer?.addEventListener('click', (e) => {
+  // Event listeners with passive option for better performance
+  elements.mainImageContainer?.addEventListener('click', (e) => {
     e.stopPropagation();
     handleImageClick(false);
-  });
+  }, { passive: false });
 
-  secondaryContainer?.addEventListener('click', (e) => {
+  elements.secondaryContainer?.addEventListener('click', (e) => {
     e.stopPropagation();
     handleImageClick(true);
-  });
+  }, { passive: false });
 
-  // Navigation
-  left?.addEventListener('click', (e) => {
+  elements.left?.addEventListener('click', (e) => {
     e.stopPropagation();
-    next(-1);
-  });
-  right?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    next(+1);
-  });
+    navigate(-1);
+  }, { passive: false });
 
-  // ACTIVATION LOGIC
-  const targetSel = host.getAttribute('data-target') || '#enter-stage';
-  console.log('🎯 Target selector:', targetSel);
+  elements.right?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    navigate(1);
+  }, { passive: false });
+
+  // Activation logic
+  const target = document.querySelector(targetSelector);
   
-  const target = document.querySelector(targetSel);
-  console.log('🎯 Target element:', target);
-  
-  const turnOn = () => { 
-    console.log('🟢 TURNING ON CAROUSEL');
-    updateStatus('ACTIVATING...');
+  function activate() {
+    if (isActive) return;
+    
+    log('Activating carousel');
+    isActive = true;
     host.classList.add('is-on');
     render();
     updateStatus('ACTIVE');
-  };
-
-  if (target?.getAttribute('data-entered') === 'true') {
-    console.log('✅ Target already has data-entered=true');
-    updateStatus('ALREADY ACTIVE');
-    turnOn();
   }
 
-  const handleActivation = (e) => {
-    console.log('🚀 RECEIVED ACTIVATION EVENT:', e);
-    
-    try { 
-      const sel = e?.detail?.selector; 
-      console.log('🚀 Event selector:', sel, 'Target selector:', targetSel);
-      if (!sel || sel === targetSel) {
-        console.log('✅ Selector matches - ACTIVATING!');
-        turnOn();
-      } else {
-        console.log('❌ Selector mismatch');
-      }
-    }
-    catch (err) { 
-      console.error('💥 Error in activation handler:', err);
-      turnOn(); 
-    }
-  };
+  // Check if already activated
+  if (target?.getAttribute('data-entered') === 'true') {
+    activate();
+  }
 
-  window.addEventListener('enter:activated', handleActivation);
-  document.addEventListener('enter:activated', handleActivation);
-  window.addEventListener('enterActivated', handleActivation);
-  document.addEventListener('enterActivated', handleActivation);
-
-  console.log('🎧 All event listeners attached');
-  updateStatus('WAITING FOR ACTIVATION');
-
-  // Show first images immediately for testing
-  setTimeout(() => {
-    if (items[0]) {
-      console.log('🖼️ Loading first main image for preview');
-      setImage(items[0]);
+  // Single consolidated event handler
+  function handleActivation(e) {
+    if (!e?.detail?.selector || e.detail.selector === targetSelector) {
+      activate();
     }
-    if (items2[0]) {
-      console.log('🖼️ Loading first secondary image for preview');
-      setSecondaryImage(items2[0]);
-    }
-  }, 100);
+  }
 
-  console.log('✅ ClickableChoiceCarousel: Initialization complete');
-  
-  window.testCarouselActivation = () => {
-    console.log('🔧 Window function called');
-    turnOn();
-  };
+  // Use more efficient event delegation
+  const events = ['enter:activated', 'enterActivated'];
+  events.forEach(eventName => {
+    window.addEventListener(eventName, handleActivation, { passive: true, once: true });
+    document.addEventListener(eventName, handleActivation, { passive: true, once: true });
+  });
+
+  // Development helper
+  if (debug) {
+    window[`testCarousel_${instanceId}`] = activate;
+  }
+
+  // Load first image immediately for preview
+  if (items[0]) {
+    setImage(items[0], false);
+  }
+  if (items2[0]) {
+    setImage(items2[0], true);
+  }
+
+  updateStatus('READY');
+  log('Initialization complete');
 })();
 </script>
