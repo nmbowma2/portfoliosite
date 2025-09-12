@@ -532,6 +532,14 @@ const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
     log('Activating carousel');
     isActive = true;
     host.classList.add('is-on');
+    
+    // Force visibility debug for mobile
+    if (debug) {
+      const rect = host.getBoundingClientRect();
+      log(`Carousel bounds: ${rect.width}x${rect.height} at (${rect.left}, ${rect.top})`);
+      log(`Computed styles:`, window.getComputedStyle(host));
+    }
+    
     render();
     updateStatus('ACTIVE');
   }
