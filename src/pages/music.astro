@@ -20,7 +20,7 @@ const playlistSrc = `https://open.spotify.com/embed/playlist/${playlistId}?utm_s
   <body>
     <div class="container">
       <!-- Return link -->
-      <a href="/" class="return-link">return</a>
+      <a href="javascript:history.back()" class="return-link">return</a>
 
       <!-- PNG image at top -->
       <div class="image-container">
@@ -103,10 +103,11 @@ const playlistSrc = `https://open.spotify.com/embed/playlist/${playlistId}?utm_s
 
       .image-container {
         position: fixed;
-        top: -30%;
-        left: 50%;
+        top: -17.5%;
+        left: 25%;
         max-height: 200%;
         transform: translateX(-50%);
+        transform: scale(1.5);
         z-index: 999;
         pointer-events: none;
       }
@@ -150,7 +151,12 @@ const playlistSrc = `https://open.spotify.com/embed/playlist/${playlistId}?utm_s
         .return-link {
           font-size: 14px;
         }
-
+        
+        .image-container {
+          top: 2.5%;
+          left: 25%;
+          transform: scale(2.25);
+        }
         .spotify-container {
           padding-top: 150px;
         }
