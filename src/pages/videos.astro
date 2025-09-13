@@ -30,6 +30,7 @@
 
         /* Mobile Layout - Standard Grid */
         .media-container {
+            border: 10px;
             display: grid;
             grid-template-columns: 1fr;
             gap: 2rem;
@@ -51,6 +52,8 @@
             border: 0px solid #EBECF0;
             overflow: hidden;
             transition: transform 0.3s ease;
+            box-shadow: 0px 2px 5px rgba(192, 192, 192, 0.3); /* Silvery shadow */
+
         }
 
         .media-embed:hover {
@@ -71,45 +74,45 @@
         @media (max-width: 768px) {
             .media-container {
                 --rows: 15;
-                --cols: 8;
+                --cols: 7;
                 grid-template-columns: repeat(8, 1fr);
 
                 gap: 1rem;
                 padding: 4rem 2rem 2rem 2rem;
             }
             .media-embed:nth-child(1) {
-                grid-column: 2 / span 4;
-                grid-row: 5 / span 4;
+                grid-column: 3 / span 5;
+                grid-row: 2 / span 4;
                 transform: rotate(0deg);
             }
 
             .media-embed:nth-child(2) {
-                grid-column: 6 / span 4;
-                grid-row: 8 / span 4;
+                grid-column: 6 / span 6;
+                grid-row: 6 / span 5;
                 transform: rotate(0deg);
             }
 
             .media-embed:nth-child(3) {
-                grid-column: 1 / span 4;
-                grid-row: 10 / span 4;
+                grid-column: 2 / span 5;
+                grid-row: 13 / span 4;
                 transform: rotate(0deg);
             }
 
             .media-embed:nth-child(4) {
-                grid-column: 5 / span 4;
-                grid-row: 9 / span 4;
+                grid-column: 4 / span 6;
+                grid-row: 20 / span 6;
                 transform: rotate(0deg);
             }
 
             .media-embed:nth-child(5) {
-                grid-column: 3 / span 3;
-                grid-row: 8 / span 3;
+                grid-column: 1 / span 4;
+                grid-row: 8 / span 4;
                 transform: rotate(0deg);
             }
 
             .media-embed:nth-child(6) {
-                grid-column: 7 / span 3;
-                grid-row: 10 / span 3;
+                grid-column: 8 / span 6;
+                grid-row: 15 / span 5;
                 transform: rotate(0deg);
             }
 
