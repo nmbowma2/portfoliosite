@@ -1,0 +1,27 @@
+index
+ - more fonts to cycle (1/2 1/2)
+ - arrows still skewed a little between desktop/mobile
+ - text should not transform outward
+MOBILE:
+ - arrows in choicecarousel load slowly
+
+videos
+ - get rid of white borders
+ - get ride of youtube play button, add a simple white play button (1/2 1/2)
+MOBILE: 
+( white borders x2)
+ - more unique video array than a single column of videos? 
+
+fotos
+ - thumbnails need to be centered
+ - use sewing board as background
+MOBILE: 
+ - create mobile 4 column photo album (figure out how to sync aspect ratio, height, width, crop, centering images, etc) 
+
+music
+ - top text needs to change to "music"
+MOBILE: 
+ - font png doesn't appear on mobile
+
+
+haven't done anything with ipad screen sizes

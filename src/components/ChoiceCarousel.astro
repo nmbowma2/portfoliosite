@@ -267,6 +267,22 @@ const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
     height: 1px;
     overflow: hidden;
   }
+  @media (max-width: 768px) {
+    .nav.left {
+      --x: -250%;
+    }
+    .nav.right {
+      --x: 250%;
+    }
+  }
+  @media (min-width: 768px) {
+    .nav.left {
+      --x: -500%;
+    }
+    .nav.right {
+      --x: 500%;
+    }
+  }
 </style>
 
 <div
