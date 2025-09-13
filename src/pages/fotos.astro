@@ -2,7 +2,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Fotos</title>
+    <title>fotos</title>
     <link href="https://fonts.googleapis.com/css2?family=Futura:wght@400&display=swap" rel="stylesheet">
     <style>
         * {
@@ -99,8 +99,8 @@
         }
         /* Mobile: 3-4 columns */
         @media (max-width: 480px)   {
-            .photos-container { grid-template-columns: 50px; gap: 4px; }
-            .photo-item { width: 50px; height: 50px; }
+            .photos-container { grid-template-columns: repeat(auto-fill, 75px); gap: 4px; }
+            .photo-item { width: 75px; height: 75px; }
         }
         @media (481px <= width <= 768px)  {
             .photos-container { grid-template-columns: repeat(auto-fill, 150px); gap: 6px; } 
