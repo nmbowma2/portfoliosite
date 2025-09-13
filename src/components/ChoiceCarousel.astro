@@ -190,7 +190,7 @@ const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
   }
 
   .secondary-image:hover {
-    transform: translateX(-50%) scale(1.00);
+    transform: translateX(-50%) scale(1.075);
   }
 
   .secondary-image.loaded {
@@ -263,22 +263,17 @@ const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
     height: 1px;
     overflow: hidden;
   }
+
+  /* Desktop defaults */
+  .nav.left  { --left-x: -500%; }
+  .nav.right { --right-x:  500%; }
+
+  /* Mobile overrides */
   @media (max-width: 768px) {
-    .nav.left {
-      --x: -150%;
-    }
-    .nav.right {
-      --x: 150%;
-    }
+    .nav.left  { --left-x: -150%; }
+    .nav.right { --right-x:  150%; }
   }
-  @media (min-width: 768px) {
-    .nav.left {
-      --x: -500%;
-    }
-    .nav.right {
-      --x: 500%;
-    }
-  }
+
 </style>
 
 <div
@@ -334,22 +329,22 @@ const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
       </div>
 
       <!-- LEFT ARROW -->
+       <!-- LEFT -->
       <button
         class="nav left"
         type="button"
         aria-label="Previous"
-        style={`--x:${leftX}; --y:${leftY}; --s:${leftScale};`}
+        style={`--x: var(--left-x, ${leftX}); --y: var(--left-y, ${leftY}); --s: var(--left-s, ${leftScale});`}
       >
-
         {lUrl ? <img src={lUrl} alt="" loading="lazy" /> : <span aria-hidden="true" style="font-size:20px;line-height:1">‹</span>}
       </button>
 
-      <!-- RIGHT ARROW -->
+      <!-- RIGHT -->
       <button
         class="nav right"
         type="button"
         aria-label="Next"
-        style={`--x:${rightX}; --y:${rightY}; --s:${rightScale};`}
+        style={`--x: var(--right-x, ${rightX}); --y: var(--right-y, ${rightY}); --s: var(--right-s, ${rightScale});`}
       >
         {rUrl ? <img src={rUrl} alt="" loading="lazy" /> : <span aria-hidden="true" style="font-size:20px;line-height:1">›</span>}
       </button>
