@@ -167,10 +167,6 @@ const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
     transition: transform 120ms ease;
   }
 
-  .mask:hover {
-    transform: scale(1.02);
-  }
-
   .mask img{
     display:block; width:100%; height:100%;
     object-fit: var(--img-fit);
@@ -194,7 +190,7 @@ const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
   }
 
   .secondary-image:hover {
-    transform: translateX(-50%) scale(1.05);
+    transform: translateX(-50%) scale(1.00);
   }
 
   .secondary-image.loaded {
@@ -269,10 +265,10 @@ const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
   }
   @media (max-width: 768px) {
     .nav.left {
-      --x: -250%;
+      --x: -150%;
     }
     .nav.right {
-      --x: 250%;
+      --x: 150%;
     }
   }
   @media (min-width: 768px) {
