@@ -43,45 +43,44 @@
             max-width:1400px;
             margin:0 auto;
             padding:60px 20px 20px;
-        
         }
 
+        .photos-container::before {
+            content: "";
+            position: absolute;
+            left: 0%;
+            top: 0%;
+            width:100%;
+            height:125%;
+            background-image: url("../assets/photos/cuttingmat.png");
+            background-repeat: repeat;        /* or no-repeat / cover / contain */
+            background-position: center;
+            border-radius: 8px;               /* optional: give the box rounded corners */
+            z-index: -1;                       /* behind tiles */
+            pointer-events: none;             /* never intercept clicks */
+        }
+        
         .photo-item {
+            display: flex;
+            justify-content: center;
+            align-items: center;
             overflow: hidden;
             border-radius: 4px;
             background-color: #111;
-            background-size: cover;
-            background-repeat: no-repeat;
 
             cursor: pointer;   /* hand cursor */
             position: relative; /* needed for overlay positioning */
             transition: transform 0.2s ease, box-shadow 0.2s ease;
             
         }
-
-        /* Overlay layer */
-        .photo-item::after {
-            content: "";
-            position: absolute;
-            inset: 0; /* top:0, right:0, bottom:0, left:0 */
-            background: rgba(0, 0, 0, 0.25); /* translucent black */
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            pointer-events: none; /* don't block clicks */
-            border-radius: 4px;
+        .photo-item img {
+            object-fit: cover;
+            object-position: center;
+            width: 100%;
+            height: 100%;
         }
 
-        /* Hover state: show overlay */
-        .photo-item:hover::after {
-            opacity: 1;
-        }
-        .photo-item:hover::before {
-            opacity: 1;
-        }
-        .photo-item:hover {
-            transform: scale(1.02);
-            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
-        }
+
         .photo-item.not-found {
             background: linear-gradient(45deg, #222, #333);
             border: 1px solid #444;
@@ -97,25 +96,17 @@
             font-size: 24px;
             font-weight: bold;
         }
-        /* Mobile: 3-4 columns */
-        @media (max-width: 480px)   {
-            .photos-container { grid-template-columns: repeat(auto-fill, 75px); gap: 4px; }
-            .photo-item { width: 75px; height: 75px; }
+                /* Error state */
+        .photo-item.error {
+            background: #2a0a0a;
+            border: 1px solid #441111;
         }
-        @media (481px <= width <= 768px)  {
-            .photos-container { grid-template-columns: repeat(auto-fill, 150px); gap: 6px; } 
-            .photo-item { width: 150px; height: 150px; }
-        }
-        @media (769px <= width <= 1200px) { 
-            .photos-container { grid-template-columns: repeat(auto-fill, 150px); gap: 8px; } 
-            .photo-item { width: 150px; height: 150px; }
-        }
-        @media (min-width: 1201px)  { 
-            .photos-container { grid-template-columns: repeat(auto-fill, 225px); gap: 10px; } 
-            .photo-item { width: 225px; height: 225px; }
 
+        .photo-item.error::before {
+            content: "✕";
+            color: #aa4444;
         }
-        
+      
 
         /* Modal Overlay */
         .modal-overlay {
@@ -201,18 +192,31 @@
             100% { transform: translate(-50%, -50%) rotate(360deg); }
         }
 
-
-        /* Error state */
-        .photo-item.error {
-            background: #2a0a0a;
-            border: 1px solid #441111;
+                /* Mobile: 3-4 columns */
+        @media (max-width: 480px)   {
+            .photos-container { grid-template-columns: repeat(auto-fill, 75px); gap: 4px; }
+            .photo-item { width: 75px; height: 75px; }
         }
+        @media (481px <= width <= 768px)  {
+            .photos-container { grid-template-columns: repeat(auto-fill, 150px); gap: 6px; } 
+            .photo-item { width: 150px; height: 150px; }
+            .photos-container::before { left: 9%; }
 
-        .photo-item.error::before {
-            content: "✕";
-            color: #aa4444;
         }
+        @media (769px <= width <= 1200px) { 
+            .photos-container { grid-template-columns: repeat(auto-fill, 150px); gap: 8px; } 
+            .photo-item { width: 150px; height: 150px; }
+        }
+        @media (min-width: 1201px)  { 
+            .photos-container { grid-template-columns: repeat(auto-fill, 225px); gap: 10px; } 
+            .photo-item { width: 225px; height: 225px; }
+            .photos-container::before {  
+            left: 11%;
+            top: 5%;
+            width:78%;
+            height:125%;}
 
+        }
 
     </style>
 </head>
@@ -230,7 +234,8 @@
             <img class="modal-image" id="modalImage" alt="Full size photo">
         </div>
     </div>
-    <script>
+
+<script>
         function PhotoGallery() {
             
             const container = document.getElementById('photosContainer');
@@ -313,13 +318,23 @@
                 
                 return photoList;
             }
+
             function createPhotoItem(containerElement: HTMLDivElement, imagePath: string) {
                 const thumbPath = imagePath.replace('/fotos/', '/fotos/thumbs/');
 
-                // Preload thumb, then paint background (avoids double-requests)
+                // Set up proper centering styles for the background image
+                containerElement.style.backgroundSize = 'cover';
+                containerElement.style.backgroundPosition = 'center center';
+                containerElement.style.backgroundRepeat = 'no-repeat';
+
+                // Preload thumb, then paint background
                 const t = new Image();
-                t.onload = () => { containerElement.style.backgroundImage = `url("${thumbPath}")`; };
-                t.onerror = () => { containerElement.classList.add('error'); };
+                t.onload = () => { 
+                    containerElement.style.backgroundImage = `url("${thumbPath}")`;
+                };
+                t.onerror = () => { 
+                    containerElement.classList.add('error');
+                };
                 t.src = thumbPath;
 
                 // Clicking opens FULL-RES original
@@ -327,10 +342,6 @@
                     if (!containerElement.classList.contains('error')) openModal(imagePath);
                 });
             }
- 
-
-
-
 
             function openModal(imagePath: string) {
                 if (modal) {
@@ -384,5 +395,7 @@
             PhotoGallery();
         });
     </script>
+
+
 </body>
 </html>
