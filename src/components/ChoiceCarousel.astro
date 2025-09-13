@@ -1,4 +1,6 @@
 ---
+import { Image } from 'astro:assets';
+
 export interface Item {
   src: string | { src: string };
   label?: string;
@@ -326,6 +328,7 @@ const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
         aria-label="Previous"
         style={`--x:${leftX}; --y:${leftY}; --s:${leftScale};`}
       >
+
         {lUrl ? <img src={lUrl} alt="" loading="lazy" /> : <span aria-hidden="true" style="font-size:20px;line-height:1">‹</span>}
       </button>
 
