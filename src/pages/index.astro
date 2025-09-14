@@ -22,19 +22,20 @@ import cf1 from "../assets/photos/carouselfont1.png"
 import cf2 from "../assets/photos/carouselfont2.png"
 import cf3 from "../assets/photos/carouselfont3.png"
 
-const withBase = (p: string) => import.meta.env.BASE_URL + p.replace(/^\//, '');
 
 /* carousel items */
+/* carousel items */
 const items = [
-  { src: c1.src, href: withBase("videos/"), label: "videos" },
-  { src: c3.src, href: withBase("fotos/"),  label: "fotos"  },
-  { src: c2.src, href: withBase("music/"), label: "music" },
+  { src: c1.src, href: "/videos/", label: "videos" },
+  { src: c3.src, href: "/fotos/",  label: "fotos"  },
+  { src: c2.src, href: "/music/",  label: "music"  },
 ];
 const items2 = [
-  { src: cf1.src, href: withBase("videos/"), label: "videos"},
-  { src: cf3.src, href: withBase("fotos/"), label: "fotos"},
-  { src: cf2.src, href: withBase("music/"), label: "music"},
+  { src: cf1.src, href: "/videos/", label: "videos" },
+  { src: cf3.src, href: "/fotos/",  label: "fotos"  },
+  { src: cf2.src, href: "/music/",  label: "music"  },
 ];
+
 const sources = [img1, img2, img3, img4, img5];
 const seqConfig = [
   { x: 0, y: 0, baseScale: 2.5 },
@@ -43,7 +44,6 @@ const seqConfig = [
   { x: 0, y: 0, baseScale: 2.5 },
   { x: 0, y: 0, baseScale: 2.5 },
 ];
-const BASE = import.meta.env.BASE_URL;
 
 ---
 
@@ -53,7 +53,7 @@ const BASE = import.meta.env.BASE_URL;
   <title>{Astro.props.title}</title>
   <meta name="description" content={Astro.props.description} />
   <!-- other head tags -->
-  <link rel="icon" href={`${BASE}web.png`} type="image/png" sizes="any" />
+  <link rel="icon" href={`/web.png`} type="image/png" sizes="any" />
   <link rel="preload" as="image" href= "/src/assets/photos/arrow_black.png">
 
 </head>

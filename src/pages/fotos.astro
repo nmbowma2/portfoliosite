@@ -1,5 +1,4 @@
 ---
-const BASE = import.meta.env.BASE_URL;
 
 ---
 <html lang="en">
@@ -8,7 +7,7 @@ const BASE = import.meta.env.BASE_URL;
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>fotos i've taken/made</title>
     <link href="https://fonts.googleapis.com/css2?family=Futura:wght@400&display=swap" rel="stylesheet">
-    <link rel="icon" href={`${BASE}mountain.png`} type="image/png" sizes="any" />
+    <link rel="icon" href={`/mountain.png`} type="image/png" sizes="any" />
 
     <style>
         * {
@@ -263,8 +262,8 @@ const BASE = import.meta.env.BASE_URL;
             const modalImage = document.getElementById('modalImage') as HTMLImageElement;
             const modalClose = document.getElementById('modalClose');
 
-            const folderPath = '/portfoliosite/fotos/';
-            const fallbackImage = '/portfoliosite/imagenotfound.jpeg';
+            const folderPath = '/fotos/';
+            const fallbackImage = '/imagenotfound.jpeg';
             let photos = [];
             
             function init() {
