@@ -371,7 +371,8 @@ const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
   const error = debug ? console.error.bind(console, `❌[${instanceId}]`) : () => {};
 
   log('Initializing...');
-  
+  // Preload arrow icons immediately (if present)
+
   // Use the passed instance ID to find our specific carousel
   const host = document.querySelector(`[data-instance-id="${instanceId}"]`);
   
