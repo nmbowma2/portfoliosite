@@ -67,7 +67,7 @@ const {
   enablePreload = true,
   mode = "fill",
   imageFit = "cover",
-  imageScale = 1.02,
+  imageScale = 1.05,
   imagePosX = "50%",
   imagePosY = "50%",
   secondaryImageOffset = "0px",
@@ -270,8 +270,8 @@ const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
 
   /* Mobile overrides */
   @media (max-width: 768px) {
-    .nav.left  { --left-x: -250%; }
-    .nav.right { --right-x:  250%; }
+    .nav.left  { --left-x: -225%; --left-s: 1.25; }
+    .nav.right { --right-x:  225%; ; --right-s: 1.25; }
   }
 
 </style>
@@ -336,7 +336,7 @@ const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
         aria-label="Previous"
         style={`--x: var(--left-x, ${leftX}); --y: var(--left-y, ${leftY}); --s: var(--left-s, ${leftScale});`}
       >
-        {lUrl ? <img src={lUrl} alt="" loading="eager" /> : <span aria-hidden="true" style="font-size:20px;line-height:1">‹</span>}
+        {lUrl ? <img src={lUrl} alt="" fetchpriority="high" decoding="async" loading="eager" /> : <span aria-hidden="true" style="font-size:20px;line-height:1">‹</span>}
       </button>
 
       <!-- RIGHT -->
@@ -346,7 +346,7 @@ const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
         aria-label="Next"
         style={`--x: var(--right-x, ${rightX}); --y: var(--right-y, ${rightY}); --s: var(--right-s, ${rightScale});`}
       >
-        {rUrl ? <img src={rUrl} alt="" loading="eager" /> : <span aria-hidden="true" style="font-size:20px;line-height:1">›</span>}
+        {rUrl ? <img src={rUrl} alt="" loading="eager" fetchpriority="high" decoding="async" /> : <span aria-hidden="true" style="font-size:20px;line-height:1">›</span>}
       </button>
     </div>
   </div>

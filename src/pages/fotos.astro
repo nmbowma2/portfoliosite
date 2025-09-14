@@ -1,9 +1,15 @@
+---
+const BASE = import.meta.env.BASE_URL;
+
+---
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>fotos i've taken/made</title>
     <link href="https://fonts.googleapis.com/css2?family=Futura:wght@400&display=swap" rel="stylesheet">
+    <link rel="icon" href={`${BASE}mountain.png`} type="image/png" sizes="any" />
+
     <style>
         * {
             box-sizing: border-box;
@@ -136,6 +142,7 @@
             max-width: 90vw;
             max-height: 90vh;
             transform: scale(0.8);
+            top: 0%;
             transition: transform 0.3s ease;
         }
 
@@ -201,6 +208,10 @@
             top: 8.5%;
             width:82%;
             height:62.5%;}
+            .modal-content {
+            top: -10%;
+            }
+
         }
         @media (481px <= width <= 768px)  {
             .photos-container { grid-template-columns: repeat(auto-fill, 150px); gap: 6px; } 

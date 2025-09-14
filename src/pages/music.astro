@@ -5,6 +5,8 @@ import headerPng from "../assets/photos/fotosspecial-01.png";
 const playlistId ='0XKuugx3I0MaxZ8r2xUBbG'
   Astro.url.searchParams.get("id") ?? "0XKuugx3I0MaxZ8r2xUBbG";
 const playlistSrc = `https://open.spotify.com/embed/playlist/${playlistId}?utm_source=generator&theme=0`;
+const BASE = import.meta.env.BASE_URL;
+
 ---
 
 <html lang="en">
@@ -16,6 +18,8 @@ const playlistSrc = `https://open.spotify.com/embed/playlist/${playlistId}?utm_s
       href="https://fonts.googleapis.com/css2?family=Futura:wght@400&display=swap"
       rel="stylesheet"
     />
+    <link rel="icon" href={`${BASE}vinyl.png`} type="image/png" sizes="any" />
+
   </head>
   <body>
     <div class="container">
