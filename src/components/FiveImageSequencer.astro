@@ -27,14 +27,18 @@ if (!Array.isArray(sources) || sources.length < 5) {
   console.warn("[FiveImageSequencer] expected 5 images, got", sources);
 }
 
-const withBase = (u?: string) =>
-  (typeof u === 'string' && u.startsWith('/'))
-    ? import.meta.env.BASE_URL + u.slice(1)
-    : u;
+const BASE: string =
+  (typeof import.meta !== "undefined" && (import.meta as any).env?.BASE_URL) ?? "/";
+
+const withBase = (u?: string): string =>
+  (typeof u === "string" && u.startsWith("/"))
+    ? BASE + u.slice(1)
+    : u ?? "";
 
 const urls = sources.map((s: string | { src: string }) =>
-  typeof s === "string" ? (withBase(s) as string) : s.src
+  withBase(typeof s === "string" ? s : s.src)
 );
+
 ---
 
 <style>

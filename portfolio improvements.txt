@@ -1,11 +1,6 @@
-1. Small changes
-2. DNS reroute & fix errors as they pop up
-3. check other screen sizes & fix (breakpoints) & add circulating fonts
-4. MAKE NEW STUFF
-5. major changes
-
-claim my heritage: munkh.xyz (DNS rerouting)
-haven't done shit for any other screen than my phone & laptop
+1. check other screen sizes & fix (breakpoints) & add circulating fonts
+2. MAKE NEW STUFF
+3. major changes
 
 MAJOR CHANGES:
 using rotating 3d renders as carousel items1{}
