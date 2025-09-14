@@ -1,34 +1,60 @@
-import fs from "fs";
-import path from "path";
-import sharp from "sharp";
-import chokidar from "chokidar";
-
-// Directories
-const SRC = path.resolve("public/fotos");
-const OUT = path.join(SRC, "thumbs");
-fs.mkdirSync(OUT, { recursive: true });
-
-// Supported image extensions
+// Supported image extensions (inputs we handle)
 const exts = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif"]);
 
-// Thumbnail generation function
+// --- generateThumbnail: preserve original extension ---
 async function generateThumbnail(file) {
   const inPath = path.join(SRC, file);
-  const base = path.parse(file).name; // Keep the basename
-  const outPath = path.join(OUT, `${base}.jpg`); // Normalize to .jpg extension
+  const { name, ext } = path.parse(file);
+  const outExt = ext.toLowerCase();                    // keep original extension
+  const outPath = path.join(OUT, `${name}${outExt}`);
 
   try {
-    const img = sharp(inPath).rotate(); // Respect EXIF orientation
+    const img = sharp(inPath).rotate();                // respect EXIF orientation
     const meta = await img.metadata();
 
-    // Scale by factor 0.1
-    const w = Math.max(1, Math.round((meta.width || 1000) * 0.1));
+    const w = Math.max(1, Math.round((meta.width  || 1000) * 0.1));
     const h = Math.max(1, Math.round((meta.height || 1000) * 0.1));
 
-    await img
-      .resize(w, h, { fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 78, mozjpeg: true })
-      .toFile(outPath);
+    let pipeline = img.resize(w, h, {
+      fit: "inside",
+      withoutEnlargement: true
+    });
+
+    // Choose encoder based on original extension
+    switch (outExt) {
+      case ".png":
+        // Good for preserving transparency
+        await pipeline.png({
+          compressionLevel: 9,
+          adaptiveFiltering: true,
+          effort: 7                           // tradeoff speed/ratio
+        }).toFile(outPath);
+        break;
+
+      case ".webp":
+        await pipeline.webp({
+          quality: 78,                        // adjust to taste
+          effort: 4,                          // encoding speed/ratio
+          alphaQuality: 85                    // for transparency
+        }).toFile(outPath);
+        break;
+
+      case ".avif":
+        await pipeline.avif({
+          quality: 50,                        // AVIF scale is different; ~45–60 is common
+          effort: 4
+        }).toFile(outPath);
+        break;
+
+      case ".jpg":
+      case ".jpeg":
+      default:
+        await pipeline.jpeg({
+          quality: 78,
+          mozjpeg: true
+        }).toFile(outPath);
+        break;
+    }
 
     console.log("Thumbnail created:", outPath);
   } catch (e) {
@@ -36,50 +62,13 @@ async function generateThumbnail(file) {
   }
 }
 
-// Function to delete the thumbnail
+// --- deleteThumbnail: match original extension ---
 function deleteThumbnail(file) {
-  const base = path.parse(file).name;
-  const thumbPath = path.join(OUT, `${base}.jpg`);
+  const { name, ext } = path.parse(file);
+  const thumbPath = path.join(OUT, `${name}${ext.toLowerCase()}`);
 
-  // Check if the thumbnail exists and delete it
   if (fs.existsSync(thumbPath)) {
     fs.unlinkSync(thumbPath);
     console.log("Thumbnail deleted:", thumbPath);
   }
 }
-
-// Watch the directory for new files, deletions, and changes
-const watcher = chokidar.watch(SRC, {
-  ignored: /^\./, // Ignore hidden files
-  persistent: true,
-  ignoreInitial: true, // Don't trigger on startup
-});
-
-// Event listener for when new files are added
-watcher.on('add', (filePath) => {
-  const fileName = path.basename(filePath);
-
-  // Check if the file is an image with a supported extension
-  if (exts.has(path.extname(fileName).toLowerCase())) {
-    console.log('New file detected:', fileName);
-    generateThumbnail(fileName); // Generate the thumbnail
-  }
-});
-
-// Event listener for when files are deleted
-watcher.on('unlink', (filePath) => {
-  const fileName = path.basename(filePath);
-
-  // Check if the file is an image with a supported extension
-  if (exts.has(path.extname(fileName).toLowerCase())) {
-    console.log('File deleted:', fileName);
-    deleteThumbnail(fileName); // Delete the corresponding thumbnail
-  }
-});
-
-// Initial scan for existing images in the folder
-fs.readdirSync(SRC)
-  .filter(f => exts.has(path.extname(f).toLowerCase())) // Filter valid image extensions
-  .forEach(file => generateThumbnail(file)); // Generate thumbnails for all existing images
-
-console.log("Watching for new image files and deletions...");
