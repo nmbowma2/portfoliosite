@@ -57,6 +57,14 @@ const iconUrl = icon ? toUrl(icon) : null;
   .icon{width:var(--iw,16px);height:auto;display:block;pointer-events:none}
   .hint{position:absolute;top:100%;left:50%;transform:translate(-50%,8px);font-size:.75rem;color:#fca5a5}
   @media (prefers-reduced-motion:reduce){.enter-btn{transition:none}}
+  @media (max-width: 768px) {
+    .enter-btn {
+      transform: scale(0.7)
+    }
+    .enter-btn:active {
+      transform: scale(0.73)
+    }
+  }
 </style>
 
 <div
