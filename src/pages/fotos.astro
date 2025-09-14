@@ -26,7 +26,7 @@ const BASE = import.meta.env.BASE_URL;
 
         .return-link {
             position: fixed;
-            top: 36px;
+            top: 30px;
             left: 36px;
             color: red;
             font-size: 16px;
@@ -201,34 +201,34 @@ const BASE = import.meta.env.BASE_URL;
 
                 /* Mobile: 3-4 columns */
         @media (max-width: 480px)   {
-            .photos-container { grid-template-columns: repeat(auto-fill, 75px); gap: 4px; grid-auto-rows: 60px; }
+            .photos-container { grid-template-columns: repeat(auto-fill, 75px); gap: 0px; grid-auto-rows: 60px; }
             .photo-item { width: 75px; height: 60px; }
             .photos-container::before {  
             left: 9%;
             top: 9%;
             width:82%;
-            height:62.5%;}
+            height:75.5%;}
             .modal-content {
             top: -10%;
             }
 
         }
         @media (481px <= width <= 768px)  {
-            .photos-container { grid-template-columns: repeat(auto-fill, 150px); gap: 6px; } 
+            .photos-container { grid-template-columns: repeat(auto-fill, 150px); gap: 0px; } 
             .photo-item { width: 150px; height: 150px; }
             .photos-container::before {  
             left: 50%;
             top: 10%;
             width:78%;
-            height:130%;}
+            height:128%;}
 
         }
         @media (769px <= width <= 1200px) { 
-            .photos-container { grid-template-columns: repeat(auto-fill, 150px); gap: 8px; } 
+            .photos-container { grid-template-columns: repeat(auto-fill, 150px); gap: 0px; } 
             .photo-item { width: 150px; height: 150px; }
         }
         @media (min-width: 1201px)  { 
-            .photos-container { grid-template-columns: repeat(auto-fill, 225px); gap: 10px; } 
+            .photos-container { grid-template-columns: repeat(auto-fill, 240px); gap: 0px; grid-auto-rows: 215px; } 
             .photo-item { width: 225px; height: 225px; }
             .photos-container::before {  
             left: 11%;

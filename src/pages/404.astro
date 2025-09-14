@@ -1,0 +1,28 @@
+---
+// Served for unknown routes on static hosts.
+// Works with your normal layouts too.
+export const prerender = true;
+const HOME = import.meta.env.BASE_URL || '/';
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>wrong url :)</title>
+    <meta name="robots" content="noindex" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      :root { color-scheme: dark light; }
+      body { margin: 0; min-height: 100dvh; display: grid; place-items: center; font: 16px system-ui, sans-serif; }
+      .card { text-align: center; padding: 2rem; max-width: 42rem; }
+      a.button { display: inline-block; margin-top: 1rem; padding: .6rem 1rem; border: 1px solid currentColor; border-radius: .5rem; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>404</h1>
+      <p>That page doesn’t exist (or moved).</p>
+      <a class="button" href={HOME}>Go home</a>
+    </main>
+  </body>
+</html>
