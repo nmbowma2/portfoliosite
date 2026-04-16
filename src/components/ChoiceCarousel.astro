@@ -533,30 +533,20 @@ const instanceId = `carousel-${Math.random().toString(36).substr(2, 9)}`;
     render();
   }
 
-  function handleImageClick(isSecondary = false) {
-    const currentItems = isSecondary ? items2 : items;
-    const currentIdx = isSecondary ? currentSecondaryIndex : currentIndex;
-    const currentItem = currentItems[currentIdx];
-    
-    if (currentItem?.href) {
-      if (currentItem.href.startsWith('http')) {
-        window.open(currentItem.href, '_blank', 'noopener,noreferrer');
-      } else {
-        window.location.href = currentItem.href;
-      }
+  function navigateTo(href) {
+    if (!href) return;
+    if (href.startsWith('http')) {
+      window.open(href, '_blank', 'noopener,noreferrer');
+    } else {
+      window.location.href = href;
     }
   }
 
-  // Event listeners with passive option for better performance
-  elements.mainImageContainer?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    handleImageClick(false);
-  }, { passive: false });
-
-  elements.secondaryContainer?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    handleImageClick(true);
-  }, { passive: false });
+  // Single hitbox covering both the item photo and the font photo.
+  // Arrows call stopPropagation so they never bubble here.
+  elements.frame?.addEventListener('click', () => {
+    navigateTo(items[currentIndex]?.href);
+  }, { passive: true });
 
   elements.left?.addEventListener('click', (e) => {
     e.stopPropagation();
