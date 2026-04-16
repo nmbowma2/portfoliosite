@@ -118,10 +118,12 @@ const CONFIG = {
   let points = [];
   const state = { tx:0, ty:0, px:0, py:0 };
   let animating = false;
+  let rafId = 0;
   let chromaArmed = false;
 
   function setTargetFromEvent(e){ state.tx = e.offsetX * dpr; state.ty = e.offsetY * dpr; }
-  function armAnimation(){ if (animating) return; animating = true; requestAnimationFrame((t)=>draw(t)); }
+  function armAnimation(){ if (animating) return; animating = true; rafId = requestAnimationFrame((t)=>draw(t)); }
+  function stopAnimation(){ animating = false; if (rafId){ cancelAnimationFrame(rafId); rafId = 0; } }
 
   canvas.addEventListener('pointermove', (e)=>{ setTargetFromEvent(e); chromaArmed = true; armAnimation(); }, { passive:true });
   canvas.addEventListener('pointerdown',  (e)=>{ setTargetFromEvent(e); chromaArmed = true; armAnimation(); }, { passive:true });
@@ -238,7 +240,7 @@ const CONFIG = {
       }
     }
 
-    if (!once) requestAnimationFrame((t)=>draw(t));
+    if (!once) rafId = requestAnimationFrame((t)=>draw(t));
   }
 
   let roTimer = 0;
@@ -261,10 +263,12 @@ const CONFIG = {
   }
   queueMicrotask(paintStatic);
 
-  if ('requestIdleCallback' in window) {
-    requestIdleCallback(() => armAnimation(), { timeout: 120 });
-  } else {
-    setTimeout(armAnimation, 60);
-  }
+  // Pause the loop when the canvas is off-screen to save CPU/battery
+  const io = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) armAnimation(); else stopAnimation();
+    }
+  }, { threshold: 0 });
+  io.observe(canvas.parentElement ?? canvas);
 })();
 </script>

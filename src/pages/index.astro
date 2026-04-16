@@ -22,9 +22,6 @@ import cf1 from "../assets/photos/carouselfont1.png"
 import cf2 from "../assets/photos/carouselfont2.png"
 import cf3 from "../assets/photos/carouselfont3.png"
 
-
-/* carousel items */
-/* carousel items */
 const items = [
   { src: c1.src, href: "/videos/", label: "videos" },
   { src: c3.src, href: "/fotos/",  label: "fotos"  },
@@ -44,22 +41,9 @@ const seqConfig = [
   { x: 0, y: 0, baseScale: 1.5 },
   { x: 0, y: 0, baseScale: 2.5 },
 ];
-
 ---
 
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{Astro.props.title}</title>
-  <meta name="description" content={Astro.props.description} />
-  <!-- other head tags -->
-  <link rel="icon" href={`/web.png`} type="image/png" sizes="any" />
-  <link rel="preload" as="image" href= "/src/assets/photos/arrow_black.png">
-
-</head>
-
-<!-- Place this near the top of index.astro -->
-<Base title="portfoliov1" description="projects">
+<Base title="portfoliov1" description="projects" favicon="/web.png">
   <section class="relative h-[130vh] px-4 md:px-8 lg:px-12 py-12">
     <TopoDots
       spacing={24.5}
@@ -85,11 +69,12 @@ const seqConfig = [
       bottom="3.5%"
       z={60}
       width="64px"
-      hideAtPx="90%"    
-      fadeSpanPx={180}  
+      hideAtPx="90%"
+      fadeSpanPx={180}
     />
   </section>
-    <div class="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+
+  <div class="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
     <div class="w-[80vw] max-w-[600px] aspect-[4/3]">
       <FiveImageSequencer
         sources={sources}
@@ -97,73 +82,62 @@ const seqConfig = [
         config={seqConfig}
         class="w-full h-full"
         fadeEnabled={true}
-        fadeScrollVh={30} 
+        fadeScrollVh={30}
         fadeMode="out"
         minOpacity={0}
         maxOpacity={1}
       />
     </div>
-  </div>  
-</Base>
-
-
-<ScrollSpacer size="60vh" />
-
-<!-- TV Section with responsive scaling -->
-<!-- TV Section with responsive scaling -->
-<section id="enter-stage" class="tv-section">
-  <div class="tv-container">
-    <!-- TV Overlay Background -->
-    <img
-      src={overlay2.src}
-      alt="TV Frame"
-      class="tv-overlay"
-    />
-
-    <!-- TV Screen Content Area -->
-    <div class="tv-screen">
-
-      <ChoiceCarousel
-        
-        class="carousel-content"
-        targetSelector="#enter-stage"
-        items={items}
-        items2={items2}
-        leftArrow={bigarrow}
-        rightArrow={bigarrow}
-
-        top="0" left="0" right="0" bottom="0"
-        centerX={false} centerY={false} offsetX="0" offsetY="0"
-
-        mode="fill"
-        frameMaxWidth="100%"
-        frameRadius={12}
-        imageFit="contain"
-        imageScale={1}
-        navigateOnClick={false}
-
-        verticalOffset="-2.5%"         
-        secondaryImageOffset="-100%"    
-        secondaryImageWidth="200%"        
-        secondaryImageHeight="180%"                  
-             
-      />
-    </div>
   </div>
 
-  <!-- Enter Button -->
-  <HoldEnterButton
-    durationMs={3000}
-    targetSelector="#enter-stage"
-    label="ENTER"
-    strokeRadius={10}
-    hideOnComplete={true}
-    icon={rightIcon}
-    strokeStart="bottom-center"
-  />
-</section>
-<ScrollSpacer size="15vh" />
+  <ScrollSpacer size="60vh" />
 
+  <section id="enter-stage" class="tv-section">
+    <div class="tv-container">
+      <img
+        src={overlay2.src}
+        alt="TV Frame"
+        class="tv-overlay"
+        loading="eager"
+        decoding="sync"
+      />
+      <div class="tv-screen">
+        <ChoiceCarousel
+          class="carousel-content"
+          targetSelector="#enter-stage"
+          items={items}
+          items2={items2}
+          leftArrow={bigarrow}
+          rightArrow={bigarrow}
+          top="0" left="0" right="0" bottom="0"
+          centerX={false} centerY={false} offsetX="0" offsetY="0"
+          mode="fill"
+          frameMaxWidth="100%"
+          frameRadius={12}
+          imageFit="contain"
+          imageScale={1}
+          navigateOnClick={false}
+          verticalOffset="-2.5%"
+          secondaryImageOffset="-100%"
+          secondaryImageWidth="200%"
+          secondaryImageHeight="180%"
+        />
+      </div>
+    </div>
+
+    <HoldEnterButton
+      durationMs={3000}
+      targetSelector="#enter-stage"
+      label="ENTER"
+      strokeRadius={10}
+      hideOnComplete={true}
+      icon={rightIcon}
+      strokeStart="bottom-center"
+    />
+  </section>
+
+  <ScrollSpacer size="15vh" />
+</Base>
 
 <style is:global>
   .tv-section {
@@ -210,14 +184,6 @@ const seqConfig = [
     width: 100%;
   }
 
-  .carousel-design-canvas {
-    position: absolute;
-    width: 1200px;  /* your desktop design width */
-    height: 900px;  /* your desktop design height */
-    transform-origin: top left;
-  }
-  
-  /* Responsive scaling for smaller screens */
   @media (max-width: 768px) {
     .tv-section {
       height: 50vh;
@@ -225,9 +191,7 @@ const seqConfig = [
     }
     .topo-wrap {
       left: -.5%;
-
     }
-    
     .tv-container {
       width: min(95vw, 500px);
     }
@@ -237,13 +201,11 @@ const seqConfig = [
     .tv-section {
       height: 45vh;
     }
-    
     .tv-container {
       width: min(100vw, 400px);
     }
   }
 
-  /* Ensure the TV maintains proportions on very wide screens */
   @media (min-width: 1200px) {
     .tv-container {
       width: min(60vw, 800px);

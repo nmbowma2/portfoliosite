@@ -18,13 +18,10 @@ for (const file of files) {
     const img = sharp(inPath).rotate(); // respect EXIF orientation
     const meta = await img.metadata();
 
-    // scale by factor 0.1
-    const w = Math.max(1, Math.round((meta.width  || 1000) * 0.1));
-    const h = Math.max(1, Math.round((meta.height || 1000) * 0.1));
-
+    // Target 450px on the long edge — 2× the largest display size (225px) for retina
     await img
-      .resize(w, h, { fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 78, mozjpeg: true })
+      .resize(450, 450, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 80, mozjpeg: true })
       .toFile(outPath);
 
     console.log("thumb ->", outPath);

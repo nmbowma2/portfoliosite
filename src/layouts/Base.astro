@@ -1,5 +1,5 @@
 ---
-const { title = "portfoliov1", description = "projects" } = Astro.props;
+const { title = "portfoliov1", description = "projects", favicon = "/favicon.ico" } = Astro.props;
 import "../styles/global.css";
 ---
 <html lang="en" class="scroll-smooth">
@@ -7,15 +7,16 @@ import "../styles/global.css";
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="description" content={description} />
+    <meta name="robots" content="index, follow" />
     <title>{title}</title>
 
-    <!-- Basic Open Graph -->
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="munkh.xyz" />
 
-    <!-- Favicons: put files in /public and reference them -->
-    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" href={favicon} type="image/png" />
+    <slot name="head" />
   </head>
   <body class="bg-neutral-950 text-neutral-100 antialiased selection:bg-neutral-200 selection:text-neutral-900">
     <slot />

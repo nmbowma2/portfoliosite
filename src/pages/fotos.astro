@@ -1,24 +1,42 @@
 ---
+import { readdirSync } from "node:fs";
+import { join, extname, basename } from "node:path";
+import cuttingmatSrc from "../assets/photos/cuttingmat.png";
 
+// Discover photos at build time — no more 50 blind JS probes
+const fotosDir = join(process.cwd(), "public/fotos");
+const photoExts = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif"]);
+const photoFiles = readdirSync(fotosDir)
+  .filter(f => photoExts.has(extname(f).toLowerCase()))
+  .sort((a, b) => {
+    const numA = parseInt(a.match(/\d+/)?.[0] ?? "0");
+    const numB = parseInt(b.match(/\d+/)?.[0] ?? "0");
+    return numA - numB;
+  })
+  .map(filename => ({
+    full: `/fotos/${filename}`,
+    // make-thumbs.mjs always outputs .jpg regardless of source extension
+    thumb: `/fotos/thumbs/${basename(filename, extname(filename))}.jpg`,
+  }));
 ---
+
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="fotos i've taken/made">
+    <meta name="robots" content="index, follow">
     <title>fotos i've taken/made</title>
-    <link href="https://fonts.googleapis.com/css2?family=Futura:wght@400&display=swap" rel="stylesheet">
-    <link rel="icon" href={`/mountain.png`} type="image/png" sizes="any" />
+    <link rel="icon" href="/mountain.png" type="image/png" />
 
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
             padding: 8px;
             background-color: black;
-            font-family: 'Futura', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             min-height: 100vh;
             overflow-x: hidden;
         }
@@ -33,21 +51,17 @@
             z-index: 2000;
             transition: transform 0.2s ease;
         }
+        .return-link:hover { transform: scale(1.05); }
 
-        .return-link:hover {
-            transform: scale(1.05);
-        }
-        
-/* One place, responsive auto-fill at 56px squares (tweak to taste) */
-/* Thumbs: fixed-size square cells */
-        .photos-container{
-            display:grid;
-            grid-auto-rows: 200px;                            /* 👈 locks the row height */
-            justify-content:center;
-            width:100%;
-            max-width:1400px;
-            margin:0 auto;
-            padding:60px 20px 20px;
+        .photos-container {
+            display: grid;
+            grid-auto-rows: 200px;
+            justify-content: center;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 20px 20px;
+            position: relative;
         }
 
         .photos-container::before {
@@ -55,16 +69,16 @@
             position: absolute;
             left: 0%;
             top: 0%;
-            width:100%;
-            height:125%;
-            background-image: url("../assets/photos/cuttingmat.png");
-            background-repeat: repeat;        /* or no-repeat / cover / contain */
+            width: 100%;
+            height: 125%;
+            background-image: var(--bg-tex);
+            background-repeat: repeat;
             background-position: center;
-            border-radius: 8px;               /* optional: give the box rounded corners */
-            z-index: -1;                       /* behind tiles */
-            pointer-events: none;             /* never intercept clicks */
+            border-radius: 8px;
+            z-index: -1;
+            pointer-events: none;
         }
-        
+
         .photo-item {
             display: flex;
             justify-content: center;
@@ -72,12 +86,11 @@
             overflow: hidden;
             border-radius: 4px;
             background-color: #111;
-
-            cursor: pointer;   /* hand cursor */
-            position: relative; /* needed for overlay positioning */
+            cursor: pointer;
+            position: relative;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
-            
         }
+
         .photo-item img {
             object-fit: cover;
             object-position: center;
@@ -85,42 +98,26 @@
             height: 100%;
         }
 
+        .photo-item.error img { display: none; }
 
-        .photo-item.not-found {
-            background: linear-gradient(45deg, #222, #333);
-            border: 1px solid #444;
-        }
-
-        .photo-item.not-found::before {
-            content: "?";
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #666;
-            font-size: 24px;
-            font-weight: bold;
-        }
-                /* Error state */
         .photo-item.error {
             background: #2a0a0a;
             border: 1px solid #441111;
         }
-
         .photo-item.error::before {
             content: "✕";
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
             color: #aa4444;
+            font-size: 24px;
         }
-      
 
-        /* Modal Overlay */
+        /* Modal */
         .modal-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.9);
+            inset: 0;
+            background: rgba(0,0,0,0.9);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -130,123 +127,109 @@
             transition: opacity 0.3s ease, visibility 0.3s ease;
             backdrop-filter: blur(10px);
         }
-
-        .modal-overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
 
         .modal-content {
             position: relative;
             max-width: 90vw;
             max-height: 90vh;
             transform: scale(0.8);
-            top: 0%;
             transition: transform 0.3s ease;
         }
-
-        .modal-overlay.active .modal-content {
-            transform: scale(1);
-        }
+        .modal-overlay.active .modal-content { transform: scale(1); }
 
         .modal-image {
-            width: auto;
-            height: auto;
-            max-width: 90vw;
-            max-height: 90vh;
+            width: auto; height: auto;
+            max-width: 90vw; max-height: 90vh;
             object-fit: contain;
             border-radius: 8px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
         }
 
         .modal-close {
             position: absolute;
-            top: -40px;
-            right: 0;
+            top: -40px; right: 0;
             color: white;
             font-size: 24px;
             cursor: pointer;
-            background: rgba(0, 0, 0, 0.5);
-            width: 32px;
-            height: 32px;
+            background: rgba(0,0,0,0.5);
+            width: 32px; height: 32px;
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
             transition: background 0.2s ease;
         }
+        .modal-close:hover { background: rgba(255,255,255,0.2); }
 
-        .modal-close:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .loading-spinner {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 20px;
-            height: 20px;
-            border: 2px solid #333;
-            border-top: 2px solid #fff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: translate(-50%, -50%) rotate(0deg); }
-            100% { transform: translate(-50%, -50%) rotate(360deg); }
-        }
-
-                /* Mobile: 3-4 columns */
-        @media (max-width: 480px)   {
-            .photos-container { grid-template-columns: repeat(auto-fill, 75px); gap: 0px; grid-auto-rows: 60px; }
-            .photo-item { width: 75px; height: 60px; }
-            .photos-container::before {  
-            left: 9%;
-            top: 9%;
-            width:82%;
-            height:75.5%;}
-            .modal-content {
-            top: -10%;
+        @media (max-width: 480px) {
+            .photos-container {
+                grid-template-columns: repeat(auto-fill, 75px);
+                gap: 0;
+                grid-auto-rows: 60px;
             }
+            .photo-item { width: 75px; height: 60px; }
+            .photos-container::before {
+                left: 9%; top: 9%;
+                width: 82%; height: 75.5%;
+            }
+            .modal-content { top: -10%; }
+        }
 
-        }
-        @media (481px <= width <= 768px)  {
-            .photos-container { grid-template-columns: repeat(auto-fill, 150px); gap: 0px; } 
+        @media (481px <= width <= 768px) {
+            .photos-container {
+                grid-template-columns: repeat(auto-fill, 150px);
+                gap: 0;
+            }
             .photo-item { width: 150px; height: 150px; }
-            .photos-container::before {  
-            left: 50%;
-            top: 10%;
-            width:78%;
-            height:128%;}
+            .photos-container::before {
+                left: 50%; top: 10%;
+                width: 78%; height: 128%;
+            }
+        }
 
-        }
-        @media (769px <= width <= 1200px) { 
-            .photos-container { grid-template-columns: repeat(auto-fill, 150px); gap: 0px; } 
+        @media (769px <= width <= 1200px) {
+            .photos-container {
+                grid-template-columns: repeat(auto-fill, 150px);
+                gap: 0;
+            }
             .photo-item { width: 150px; height: 150px; }
         }
-        @media (min-width: 1201px)  { 
-            .photos-container { grid-template-columns: repeat(auto-fill, 240px); gap: 0px; grid-auto-rows: 215px; } 
+
+        @media (min-width: 1201px) {
+            .photos-container {
+                grid-template-columns: repeat(auto-fill, 240px);
+                gap: 0;
+                grid-auto-rows: 215px;
+            }
             .photo-item { width: 225px; height: 225px; }
-            .photos-container::before {  
-            left: 11%;
-            top: 5%;
-            width:78%;
-            height:155%;}   
-
+            .photos-container::before {
+                left: 11%; top: 5%;
+                width: 78%; height: 155%;
+            }
         }
-
     </style>
 </head>
 <body>
-    <a href="javascript:history.back()" class="return-link">return</a>
-    
-    <div class="photos-container" id="photosContainer">
-        <!-- Photos will be dynamically generated here -->
+    <a href="/" class="return-link">return</a>
+
+    <div
+      class="photos-container"
+      id="photosContainer"
+      style={`--bg-tex: url('${cuttingmatSrc.src}')`}
+    >
+        {photoFiles.map(photo => (
+          <div class="photo-item" data-full={photo.full}>
+            <img
+              src={photo.thumb}
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+        ))}
     </div>
 
-    <!-- Modal for full-size images -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal-content">
             <div class="modal-close" id="modalClose">×</div>
@@ -255,166 +238,53 @@
     </div>
 
 <script>
-        function PhotoGallery() {
-            
-            const container = document.getElementById('photosContainer');
-            const modal = document.getElementById('modalOverlay');
-            const modalImage = document.getElementById('modalImage') as HTMLImageElement;
-            const modalClose = document.getElementById('modalClose');
+    const modal = document.getElementById('modalOverlay') as HTMLElement;
+    const modalImage = document.getElementById('modalImage') as HTMLImageElement;
+    const modalClose = document.getElementById('modalClose');
+    const fallbackImage = '/imagenotfound.jpeg';
 
-            const folderPath = '/fotos/';
-            const fallbackImage = '/imagenotfound.jpeg';
-            let photos = [];
-            
-            function init() {
-                setupEventListeners();
-                generatePhotoGrid();
-                
-                window.addEventListener('resize', function() {
-                    generatePhotoGrid();
-                });
-            }
+    // Mark tiles whose thumbnail failed to load
+    document.querySelectorAll<HTMLElement>('.photo-item img').forEach(img => {
+        img.onerror = () => img.closest('.photo-item')?.classList.add('error');
+    });
 
-            function setupEventListeners() {
-                // Modal close events
-                if (modalClose) {
-                    modalClose.addEventListener('click', closeModal);
-                }
-                
-                if (modal) {
-                    modal.addEventListener('click', function(evt) {
-                        if (evt.target === modal) closeModal();
-                    });
-                }
-                
-                // Keyboard events
-                document.addEventListener('keydown', function(evt) {
-                    if (evt.key === 'Escape') closeModal();
-                });
-
-                // Return link functionality
-                const returnLink = document.querySelector('.return-link');
-                if (returnLink) {
-                    returnLink.addEventListener('click', function(evt) {
-                        evt.preventDefault();
-                        if (window.history.length > 1) {
-                            window.history.back();
-                        } else {
-                            window.location.href = '/';
-                        }
-                    });
-                }
-            }
-
-            function generatePhotoGrid() {
-                // Clear existing photos
-                if (container) {
-                    container.innerHTML = '';
-                }
-                
-                // Generate photo list
-                photos = generatePhotoList();
-                
-                // Create photo items for all photos
-                for (let i = 0; i < photos.length; i++) {
-                    const photoItem = document.createElement('div');
-                    photoItem.className = 'photo-item';
-                    createPhotoItem(photoItem, photos[i]);
-                    
-                    if (container) {
-                        container.appendChild(photoItem);
-                    }
-                }
-            }
-
-            function generatePhotoList() {
-                const photoList = [];
-                
-                // Generate photos 1-50
-                for (let i = 1; i <= 50; i++) {
-                    photoList.push(folderPath + 'photo' + i + '.jpg');
-                }
-                
-                return photoList;
-            }
-
-            function createPhotoItem(containerElement: HTMLDivElement, imagePath: string) {
-                const thumbPath = imagePath.replace('/fotos/', '/fotos/thumbs/');
-
-                // Set up proper centering styles for the background image
-                containerElement.style.backgroundSize = 'cover';
-                containerElement.style.backgroundPosition = 'center center';
-                containerElement.style.backgroundRepeat = 'no-repeat';
-
-                // Preload thumb, then paint background
-                const t = new Image();
-                t.onload = () => { 
-                    containerElement.style.backgroundImage = `url("${thumbPath}")`;
-                };
-                t.onerror = () => { 
-                    containerElement.classList.add('error');
-                };
-                t.src = thumbPath;
-
-                // Clicking opens FULL-RES original
-                containerElement.addEventListener('click', () => {
-                    if (!containerElement.classList.contains('error')) openModal(imagePath);
-                });
-            }
-
-            function openModal(imagePath: string) {
-                if (modal) {
-                    modal.classList.add('active');
-                    document.body.style.overflow = 'hidden';
-                    
-                    // Reset modal image
-                    if (modalImage) {
-                        modalImage.src = '';
-                        modalImage.style.opacity = '0.5';
-                        
-                        // Load full-size image
-                        const fullImage = new Image();
-                        fullImage.onload = function() {
-                            if (modalImage) {
-                                modalImage.src = imagePath;
-                                modalImage.style.opacity = '1';
-                            }
-                        };
-                        fullImage.onerror = function() {
-                            if (modalImage) {
-                                modalImage.src = fallbackImage;
-                                modalImage.style.opacity = '1';
-                            }
-                        };
-                        fullImage.src = imagePath;
-                    }
-                }
-            }
-
-            function closeModal() {
-                if (modal) {
-                    modal.classList.remove('active');
-                    document.body.style.overflow = '';
-                    
-                    // Clear image source to stop loading
-                    setTimeout(function() {
-                        if (modal && !modal.classList.contains('active') && modalImage) {
-                            modalImage.src = '';
-                        }
-                    }, 300);
-                }
-            }
-
-            // Initialize
-            init();
-        }
-
-        // Initialize gallery when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            PhotoGallery();
+    // Open modal on tile click
+    document.querySelectorAll<HTMLElement>('.photo-item').forEach(item => {
+        item.addEventListener('click', () => {
+            if (item.classList.contains('error')) return;
+            const full = item.dataset.full;
+            if (full) openModal(full);
         });
-    </script>
+    });
 
+    // Return link: go back if history exists, else home
+    document.querySelector('.return-link')?.addEventListener('click', e => {
+        e.preventDefault();
+        window.history.length > 1 ? window.history.back() : (window.location.href = '/');
+    });
 
+    modalClose?.addEventListener('click', closeModal);
+    modal?.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    function openModal(imagePath: string) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        modalImage.style.opacity = '0.5';
+
+        const full = new Image();
+        full.onload = () => { modalImage.src = imagePath; modalImage.style.opacity = '1'; };
+        full.onerror = () => { modalImage.src = fallbackImage; modalImage.style.opacity = '1'; };
+        full.src = imagePath;
+    }
+
+    function closeModal() {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+        setTimeout(() => {
+            if (!modal.classList.contains('active')) modalImage.src = '';
+        }, 300);
+    }
+</script>
 </body>
 </html>

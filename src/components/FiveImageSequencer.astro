@@ -27,6 +27,8 @@ if (!Array.isArray(sources) || sources.length < 5) {
   console.warn("[FiveImageSequencer] expected 5 images, got", sources);
 }
 
+const instanceId = `seq5-${Math.random().toString(36).slice(2, 9)}`;
+
 const BASE: string =
   (typeof import.meta !== "undefined" && (import.meta as any).env?.BASE_URL) ?? "/";
 
@@ -58,10 +60,10 @@ const urls = sources.map((s: string | { src: string }) =>
 </style>
 
 <div class={`seq5-wrap ${className}`} data-fade-enabled={fadeEnabled ? "1" : "0"}>
-  <canvas id="seq5" class="seq5" aria-hidden="true"></canvas>
+  <canvas id={instanceId} class="seq5" aria-hidden="true"></canvas>
 </div>
 
-<script define:vars={{ urls, fps, config, fadeEnabled, fadeScrollVh, fadeMode, minOpacity, maxOpacity }}>
+<script is:inline define:vars={{ urls, fps, config, fadeEnabled, fadeScrollVh, fadeMode, minOpacity, maxOpacity, instanceId }}>
 // @ts-nocheck
 const RATE_UP   = .175;
 const RATE_DOWN = .125;
@@ -73,7 +75,7 @@ const URLS = urls;
 const FPS  = fps;
 const CFG  = config;
 
-const canvas = document.getElementById("seq5");
+const canvas = document.getElementById(instanceId);
 const host   = canvas?.parentElement;
 const ctx = canvas?.getContext("2d");
 let dpr = Math.max(1, window.devicePixelRatio || 1);
