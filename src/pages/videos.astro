@@ -60,8 +60,7 @@
             border: 0px solid #EBECF0;
             overflow: hidden;
             transition: transform 0.3s ease;
-            box-shadow: 0px 2px 5px rgba(192, 192, 192, 0.3); /* Silvery shadow */
-
+            box-shadow: 0px 2px 5px rgba(192, 192, 192, 0.3);
         }
 
         .media-embed:hover {
@@ -84,52 +83,33 @@
                 --rows: 15;
                 --cols: 7;
                 grid-template-columns: repeat(8, 1fr);
-
                 gap: 1rem;
                 padding: 4rem 2rem 2rem 2rem;
             }
             .media-embed:nth-child(1) {
                 grid-column: 3 / span 6;
                 grid-row: 2 / span 5;
-                transform: rotate(0deg);
             }
-
             .media-embed:nth-child(2) {
                 grid-column: 6 / span 8;
                 grid-row: 7 / span 7;
-                transform: rotate(0deg);
             }
-
             .media-embed:nth-child(3) {
                 grid-column: 2 / span 6;
                 grid-row: 13 / span 5;
-                transform: rotate(0deg);
             }
-
             .media-embed:nth-child(4) {
                 grid-column: 3 / span 9;
                 grid-row: 20 / span 7;
-                transform: rotate(0deg);
             }
-
             .media-embed:nth-child(5) {
                 grid-column: 1 / span 4;
                 grid-row: 8 / span 4;
-                transform: rotate(0deg);
             }
-
             .media-embed:nth-child(6) {
                 grid-column: 8 / span 6;
                 grid-row: 16 / span 6;
-                transform: rotate(0deg);
             }
-
-            .media-embed:nth-child(7) {
-                grid-column: 2 / span 7;
-                grid-row: 25 / span 6;
-                transform: rotate(0deg);
-            }
-
         }
 
         /* Desktop - Random scattered grid */
@@ -142,49 +122,30 @@
                 gap: 1.5rem;
                 padding: 4rem;
             }
-
-            /* Scattered positioning with varied sizes */
             .media-embed:nth-child(1) {
                 grid-column: 1 / span 2;
                 grid-row: 1 / span 2;
             }
-
             .media-embed:nth-child(2) {
                 grid-column: 6 / span 3;
                 grid-row: 1 / span 2;
-                transform: rotate(0deg);
             }
-
             .media-embed:nth-child(3) {
                 grid-column: 1 / span 2;
                 grid-row: 4 / span 2;
-                transform: rotate(0deg);
             }
-
             .media-embed:nth-child(4) {
                 grid-column: 5 / span 2;
                 grid-row: 4 / span 2;
-                transform: rotate(0deg);
             }
-
             .media-embed:nth-child(5) {
                 grid-column: 3 / span 2;
                 grid-row: 2 / span 2;
-                transform: rotate(0deg);
             }
-
             .media-embed:nth-child(6) {
                 grid-column: 7 / span 2;
                 grid-row: 3 / span 2;
-                transform: rotate(0deg);
             }
-
-            .media-embed:nth-child(7) {
-                grid-column: 3 / span 2;
-                grid-row: 4 / span 2;
-                transform: rotate(0deg);
-            }
-
         }
 
         /* Large Desktop - Even more scattered */
@@ -194,59 +155,69 @@
                 grid-template-rows: repeat(8, 100px);
                 gap: 2rem;
                 padding: 5rem;
-                --rows:10;
-                --cols:10;
+                --rows: 10;
+                --cols: 10;
             }
-
             .media-embed:nth-child(1) {
                 grid-column: 2 / span 3;
                 grid-row: 1 / span 4;
-                transform: rotate(0deg);
             }
-
             .media-embed:nth-child(2) {
                 grid-column: 8 / span 3;
                 grid-row: 2 / span 2;
-                transform: rotate(0deg);
             }
-
             .media-embed:nth-child(3) {
                 grid-column: 1 / span 4;
                 grid-row: 5 / span 4;
-                transform: rotate(0deg);
             }
-
             .media-embed:nth-child(4) {
                 grid-column: 6 / span 3;
                 grid-row: 4 / span 2;
-                transform: rotate(0deg);
             }
-
             .media-embed:nth-child(5) {
                 grid-column: 4 / span 2;
                 grid-row: 3 / span 2;
-                transform: rotate(0deg);
             }
-
             .media-embed:nth-child(6) {
                 grid-column: 10 / span 3;
                 grid-row: 5 / span 3;
-                transform: rotate(0deg);
-            }
-
-            .media-embed:nth-child(7) {
-                grid-column: 6 / span 2;
-                grid-row: 1 / span 2;
-                transform: rotate(0deg);
             }
         }
 
+        /* Featured video section */
+        .featured-section {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 2rem 4rem;
+        }
 
+        .scroll-hint {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            margin-bottom: 1.5rem;
+            user-select: none;
+        }
+
+        .featured-embed {
+            width: 100%;
+            aspect-ratio: 16/9;
+            border: none;
+            display: block;
+            box-shadow: 0px 4px 24px rgba(192, 192, 192, 0.15);
+        }
+
+        @media (max-width: 768px) {
+            .featured-section {
+                padding: 1.5rem 1rem 3rem;
+            }
+        }
     </style>
 </head>
 <body>
     <a href="/" class="return-link">return</a>
-    
+
     <div class="media-container">
         <div class="media-embed">
             <iframe
@@ -297,15 +268,17 @@
                 alt="Sample Image 2"
                 loading="lazy">
         </div>
+    </div>
 
-        <div class="media-embed">
-            <iframe
-                src="https://www.youtube.com/embed/l1O6aZ9Yy_w"
-                title="YouTube video 5"
-                allowfullscreen
-                loading="lazy">
-            </iframe>
-        </div>
+    <div class="featured-section">
+        <p class="scroll-hint">↓ scroll</p>
+        <iframe
+            class="featured-embed"
+            src="https://www.youtube.com/embed/l1O6aZ9Yy_w"
+            title="YouTube video 5"
+            allowfullscreen
+            loading="lazy">
+        </iframe>
     </div>
 
     <script>
