@@ -261,7 +261,7 @@ const CONFIG = {
     draw(performance.now(), true);
     CONFIG.chroma.enabled = saved;
   }
-  queueMicrotask(paintStatic);
+  (window.requestIdleCallback ?? ((cb) => setTimeout(cb, 0)))(paintStatic);
 
   // Pause the loop when the canvas is off-screen to save CPU/battery
   const io = new IntersectionObserver((entries) => {
