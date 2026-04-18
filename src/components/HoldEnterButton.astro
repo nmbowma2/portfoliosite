@@ -51,8 +51,8 @@ const iconUrl = icon ? toUrl(icon) : null;
   .enter-btn:active{--b:.85;--press:1.03}
   .enter-btn[aria-disabled="true"]{cursor:default;opacity:.65;--b:1}
 
-  .enter-svg{position:absolute;inset:-6px;width:calc(100% + 12px);height:calc(100% + 12px);pointer-events:none}
-  .enter-stroke{fill:none;stroke:#880015;stroke-width:3;stroke-linecap:round;opacity:0;transition:opacity 100ms ease}
+  .enter-svg{position:absolute;inset:-6px;width:calc(100% + 12px);height:calc(100% + 12px);pointer-events:none;contain:paint;transform:translateZ(0)}
+  .enter-stroke{fill:none;stroke:#880015;stroke-width:3;stroke-linecap:round;opacity:0}
 
   .icon{width:var(--iw,16px);height:auto;display:block;pointer-events:none}
   .hint{position:absolute;top:100%;left:50%;transform:translate(-50%,8px);font-size:.75rem;color:#fca5a5}
@@ -145,6 +145,7 @@ const iconUrl = icon ? toUrl(icon) : null;
     rect.style.strokeDasharray = `0 ${total}`;
     rect.style.opacity = '0';
     cancelAnimationFrame(rafId);
+    rafId = 0;
   }
 
   function maybeFadeOverlay(){
@@ -183,22 +184,21 @@ const iconUrl = icon ? toUrl(icon) : null;
   }
 
   function step(ts){
-    rafId = requestAnimationFrame(step);
     if (!startTs) startTs = ts;
     const t = ts - startTs;
     const p = Math.max(0, Math.min(1, t / durMs));
     const seg = p * total;
 
-    // solid arc + gap pattern
     rect.style.strokeDasharray = `${seg.toFixed(2)} ${(total - seg).toFixed(2)}`;
-    rect.style.strokeDashoffset = String(offset);
-    rect.style.opacity = '1';
 
     if (t >= durMs){
       cancelAnimationFrame(rafId);
+      rafId = 0;
       btn.setAttribute('aria-pressed','true');
       btn.style.setProperty('--press','1.02');
       activate();
+    } else {
+      rafId = requestAnimationFrame(step);
     }
   }
 

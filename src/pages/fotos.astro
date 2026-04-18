@@ -167,6 +167,11 @@ const photoFiles = readdirSync(fotosDir)
                 grid-template-columns: repeat(auto-fill, 75px);
                 gap: 0;
                 grid-auto-rows: 75px;
+                padding-top: 55px;
+            }
+            .photos-container::before {
+                top: 55px;
+                height: calc(100% - 55px);
             }
             .modal-content { top: -10%; }
         }
