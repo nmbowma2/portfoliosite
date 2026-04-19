@@ -27,12 +27,19 @@ function autoThumbsPlugin() {
           awaitWriteFinish: { stabilityThreshold: 500, pollInterval: 100 },
         });
 
+        const invalidateFotos = () => {
+          const fotosPath = path.resolve("src/pages/fotos.astro");
+          const mods = server.moduleGraph.getModulesByFile(fotosPath);
+          if (mods) mods.forEach(m => server.moduleGraph.invalidateModule(m));
+        };
+
         watcher.on("add", async (filePath) => {
           if (!EXTS.has(path.extname(filePath).toLowerCase())) return;
           console.log("[thumbs] new photo:", path.basename(filePath));
           const made = await makeThumb(filePath);
           if (made) {
             console.log("[thumbs] thumbnail ready — reloading");
+            invalidateFotos();
             server.hot.send({ type: "full-reload" });
           }
         });
@@ -43,6 +50,7 @@ function autoThumbsPlugin() {
           const made = await makeThumb(filePath);
           if (made) {
             console.log("[thumbs] thumbnail updated — reloading");
+            invalidateFotos();
             server.hot.send({ type: "full-reload" });
           }
         });
