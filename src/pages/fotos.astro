@@ -234,17 +234,31 @@ const photoFiles = readdirSync(fotosDir)
     const modalClose = document.getElementById('modalClose');
     const fallbackImage = '/imagenotfound.jpeg';
 
+    // Build ordered list of valid photo paths from the grid
+    const items = Array.from(document.querySelectorAll<HTMLElement>('.photo-item'));
+    const photos: string[] = items
+        .filter(el => !el.classList.contains('error') && !!el.dataset.full)
+        .map(el => el.dataset.full as string);
+
+    let currentIndex = 0;
+
     // Mark tiles whose thumbnail failed to load
-    document.querySelectorAll<HTMLElement>('.photo-item img').forEach(img => {
-        img.onerror = () => img.closest('.photo-item')?.classList.add('error');
+    items.forEach(item => {
+        const img = item.querySelector('img');
+        if (img) img.onerror = () => item.classList.add('error');
     });
 
     // Open modal on tile click
-    document.querySelectorAll<HTMLElement>('.photo-item').forEach(item => {
+    items.forEach(item => {
         item.addEventListener('click', () => {
             if (item.classList.contains('error')) return;
             const full = item.dataset.full;
-            if (full) openModal(full);
+            if (!full) return;
+            const idx = photos.indexOf(full);
+            if (idx !== -1) {
+                currentIndex = idx;
+                openModal(full);
+            }
         });
     });
 
@@ -256,17 +270,53 @@ const photoFiles = readdirSync(fotosDir)
 
     modalClose?.addEventListener('click', closeModal);
     modal?.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+    document.addEventListener('keydown', e => {
+        if (!modal.classList.contains('active')) return;
+        if (e.key === 'Escape') closeModal();
+        if (e.key === 'ArrowRight') navigate(1);
+        if (e.key === 'ArrowLeft')  navigate(-1);
+    });
 
-    function openModal(imagePath: string) {
+    function openModal(imagePath: string, direction: 'left' | 'right' | null = null) {
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
-        modalImage.style.opacity = '0.5';
+
+        if (direction) {
+            modalImage.style.transition = 'none';
+            modalImage.style.transform = direction === 'right' ? 'translateX(40px)' : 'translateX(-40px)';
+            modalImage.style.opacity = '0';
+            requestAnimationFrame(() => {
+                modalImage.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+            });
+        } else {
+            modalImage.style.opacity = '0.5';
+        }
 
         const full = new Image();
-        full.onload = () => { modalImage.src = imagePath; modalImage.style.opacity = '1'; };
-        full.onerror = () => { modalImage.src = fallbackImage; modalImage.style.opacity = '1'; };
+        full.onload = () => {
+            modalImage.src = imagePath;
+            modalImage.style.transform = 'translateX(0)';
+            modalImage.style.opacity = '1';
+        };
+        full.onerror = () => {
+            modalImage.src = fallbackImage;
+            modalImage.style.transform = 'translateX(0)';
+            modalImage.style.opacity = '1';
+        };
         full.src = imagePath;
+
+        // Preload neighbors
+        const prev = photos[currentIndex - 1];
+        const next = photos[currentIndex + 1];
+        if (prev) new Image().src = prev;
+        if (next) new Image().src = next;
+    }
+
+    function navigate(delta: number) {
+        const next = currentIndex + delta;
+        if (next < 0 || next >= photos.length) return;
+        currentIndex = next;
+        openModal(photos[currentIndex], delta > 0 ? 'left' : 'right');
     }
 
     function closeModal() {
@@ -276,6 +326,34 @@ const photoFiles = readdirSync(fotosDir)
             if (!modal.classList.contains('active')) modalImage.src = '';
         }, 300);
     }
+
+    // Swipe detection (mobile)
+    let swipeStartX = 0;
+    let swipeStartY = 0;
+    let isSwiping = false;
+
+    modal.addEventListener('touchstart', e => {
+        swipeStartX = e.touches[0].clientX;
+        swipeStartY = e.touches[0].clientY;
+        isSwiping = true;
+    }, { passive: true });
+
+    modal.addEventListener('touchend', e => {
+        if (!isSwiping) return;
+        isSwiping = false;
+        const dx = e.changedTouches[0].clientX - swipeStartX;
+        const dy = e.changedTouches[0].clientY - swipeStartY;
+        // Only register as horizontal swipe if horizontal movement dominates
+        if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+        navigate(dx < 0 ? 1 : -1);
+    }, { passive: true });
+
+    modal.addEventListener('touchmove', e => {
+        // Allow default scroll if mostly vertical; prevent if horizontal swipe
+        const dx = Math.abs(e.touches[0].clientX - swipeStartX);
+        const dy = Math.abs(e.touches[0].clientY - swipeStartY);
+        if (dx > dy) e.preventDefault();
+    }, { passive: false });
 </script>
 </body>
 </html>
