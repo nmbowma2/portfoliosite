@@ -2,6 +2,7 @@
 import { defineConfig } from "astro/config";
 import tailwind from "@tailwindcss/vite";
 import path from "path";
+import fs from "fs";
 
 function autoThumbsPlugin() {
   return {
@@ -27,10 +28,13 @@ function autoThumbsPlugin() {
           awaitWriteFinish: { stabilityThreshold: 500, pollInterval: 100 },
         });
 
-        const invalidateFotos = () => {
-          const fotosPath = path.resolve("src/pages/fotos.astro");
-          const mods = server.moduleGraph.getModulesByFile(fotosPath);
-          if (mods) mods.forEach(m => server.moduleGraph.invalidateModule(m));
+        const fotosPage = path.resolve("src/pages/fotos.astro");
+
+        const reloadFotos = () => {
+          // Touch the page file so Vite's own watcher sees it as changed
+          // and fully recompiles it (re-runs readdirSync in the frontmatter)
+          const now = new Date();
+          fs.utimesSync(fotosPage, now, now);
         };
 
         watcher.on("add", async (filePath) => {
@@ -38,9 +42,8 @@ function autoThumbsPlugin() {
           console.log("[thumbs] new photo:", path.basename(filePath));
           const made = await makeThumb(filePath);
           if (made) {
-            console.log("[thumbs] thumbnail ready — reloading");
-            invalidateFotos();
-            server.hot.send({ type: "full-reload" });
+            console.log("[thumbs] thumbnail ready — reloading page");
+            reloadFotos();
           }
         });
 
@@ -49,9 +52,8 @@ function autoThumbsPlugin() {
           console.log("[thumbs] photo updated:", path.basename(filePath));
           const made = await makeThumb(filePath);
           if (made) {
-            console.log("[thumbs] thumbnail updated — reloading");
-            invalidateFotos();
-            server.hot.send({ type: "full-reload" });
+            console.log("[thumbs] thumbnail updated — reloading page");
+            reloadFotos();
           }
         });
 
