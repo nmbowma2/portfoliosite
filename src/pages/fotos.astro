@@ -1,6 +1,7 @@
 ---
 import cuttingmatSrc from "../assets/photos/cuttingmat.png";
 import photoFiles from "../data/photos-manifest.json";
+import ReturnLink from "../components/ReturnLink.astro";
 ---
 
 <html lang="en">
@@ -23,18 +24,6 @@ import photoFiles from "../data/photos-manifest.json";
             min-height: 100vh;
             overflow-x: hidden;
         }
-
-        .return-link {
-            position: fixed;
-            top: 30px;
-            left: 36px;
-            color: red;
-            font-size: 16px;
-            text-decoration: none;
-            z-index: 2000;
-            transition: transform 0.2s ease;
-        }
-        .return-link:hover { transform: scale(1.05); }
 
         .photos-container {
             display: grid;
@@ -158,15 +147,7 @@ import photoFiles from "../data/photos-manifest.json";
             }
         }
 
-        @media (481px <= width <= 768px) {
-            .photos-container {
-                grid-template-columns: repeat(auto-fill, 150px);
-                gap: 0;
-                grid-auto-rows: 150px;
-            }
-        }
-
-        @media (769px <= width <= 1200px) {
+        @media (min-width: 481px) and (max-width: 1200px) {
             .photos-container {
                 grid-template-columns: repeat(auto-fill, 150px);
                 gap: 0;
@@ -184,7 +165,7 @@ import photoFiles from "../data/photos-manifest.json";
     </style>
 </head>
 <body>
-    <a href="/" class="return-link">return</a>
+    <ReturnLink />
 
     <div
       class="photos-container"
@@ -242,12 +223,6 @@ import photoFiles from "../data/photos-manifest.json";
                 openModal(full);
             }
         });
-    });
-
-    // Return link: go back if history exists, else home
-    document.querySelector('.return-link')?.addEventListener('click', e => {
-        e.preventDefault();
-        window.history.length > 1 ? window.history.back() : (window.location.href = '/');
     });
 
     modalClose?.addEventListener('click', closeModal);

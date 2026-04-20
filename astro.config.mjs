@@ -31,24 +31,23 @@ function autoThumbsPlugin() {
           awaitWriteFinish: { stabilityThreshold: 500, pollInterval: 100 },
         });
 
-        watcher.on("add", async (filePath) => {
+        async function processPhoto(filePath) {
           if (!EXTS.has(path.extname(filePath).toLowerCase())) return;
-          console.log("[thumbs] new photo:", path.basename(filePath));
           const made = await makeThumb(filePath);
           if (made) {
             updateManifest();
             console.log("[thumbs] manifest updated — page will reload");
           }
+        }
+
+        watcher.on("add", (filePath) => {
+          console.log("[thumbs] new photo:", path.basename(filePath));
+          processPhoto(filePath);
         });
 
-        watcher.on("change", async (filePath) => {
-          if (!EXTS.has(path.extname(filePath).toLowerCase())) return;
+        watcher.on("change", (filePath) => {
           console.log("[thumbs] photo updated:", path.basename(filePath));
-          const made = await makeThumb(filePath);
-          if (made) {
-            updateManifest();
-            console.log("[thumbs] manifest updated — page will reload");
-          }
+          processPhoto(filePath);
         });
 
         server.httpServer?.once("close", () => watcher.close());

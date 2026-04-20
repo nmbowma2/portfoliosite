@@ -1,5 +1,6 @@
 ---
 import headerPng from "../assets/photos/fotosspecial-01.png";
+import ReturnLink from "../components/ReturnLink.astro";
 
 const playlistId = Astro.url.searchParams.get("id") ?? "37NPbY0z9gQtZp7t5cbjFh";
 const playlistSrc = `https://open.spotify.com/embed/playlist/${playlistId}?utm_source=generator&theme=0`;
@@ -18,8 +19,7 @@ const playlistSrc = `https://open.spotify.com/embed/playlist/${playlistId}?utm_s
   </head>
   <body>
     <div class="container">
-      <!-- Return link -->
-      <a href="/" class="return-link">return</a>
+      <ReturnLink />
 
       <!-- PNG image at top -->
       <div class="image-container">
@@ -68,27 +68,6 @@ const playlistSrc = `https://open.spotify.com/embed/playlist/${playlistId}?utm_s
         width: 100%;
         min-height: 100vh;
         position: relative;
-      }
-
-      /* Return link - bezel removed */
-      .return-link {
-        position: fixed;
-        top: 36px;
-        left: 36px;
-        color: red;
-        font-size: 16px;
-        text-decoration: none;
-        z-index: 2000;
-        transition: transform 0.2s ease;
-        background: none;   /* no button background */
-        border: none;       /* no button border */
-        outline: none;      /* removes focus bezel */
-      }
-      .return-link:hover {
-        transform: scale(1.05);
-      }
-      .return-link:focus {
-        outline: none;      /* prevent focus halo */
       }
 
       .image-container {

@@ -1,0 +1,32 @@
+---
+---
+<a href="/" class="return-link">return</a>
+
+<style>
+  .return-link {
+    position: fixed;
+    top: 36px;
+    left: 36px;
+    color: red;
+    font-size: 16px;
+    text-decoration: none;
+    z-index: 2000;
+    transition: transform 0.2s ease;
+    background: none;
+    border: none;
+    outline: none;
+  }
+  .return-link:hover { transform: scale(1.05); }
+  .return-link:focus { outline: none; }
+
+  @media (max-width: 768px) {
+    .return-link { font-size: 14px; }
+  }
+</style>
+
+<script>
+  document.querySelector('.return-link')?.addEventListener('click', e => {
+    e.preventDefault();
+    window.history.length > 1 ? window.history.back() : (window.location.href = '/');
+  });
+</script>
