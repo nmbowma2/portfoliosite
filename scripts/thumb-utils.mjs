@@ -2,11 +2,28 @@ import fs from "fs";
 import path from "path";
 import sharp from "sharp";
 
-export const SRC  = path.resolve("public/fotos");
-export const OUT  = path.join(SRC, "thumbs");
-export const EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif"]);
+export const SRC      = path.resolve("public/fotos");
+export const OUT      = path.join(SRC, "thumbs");
+export const EXTS     = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif"]);
+export const MANIFEST = path.resolve("src/data/photos-manifest.json");
 
 fs.mkdirSync(OUT, { recursive: true });
+fs.mkdirSync(path.dirname(MANIFEST), { recursive: true });
+
+/** Write src/data/photos-manifest.json from the current contents of public/fotos. */
+export function updateManifest() {
+  const files = fs.readdirSync(SRC)
+    .filter(f => EXTS.has(path.extname(f).toLowerCase()))
+    .sort((a, b) => {
+      const n = s => parseInt(s.match(/\d+/)?.[0] ?? "0");
+      return n(a) - n(b);
+    })
+    .map(filename => ({
+      full:  `/fotos/${filename}`,
+      thumb: `/fotos/thumbs/${path.parse(filename).name}.jpg`,
+    }));
+  fs.writeFileSync(MANIFEST, JSON.stringify(files, null, 2));
+}
 
 /**
  * Generate a thumbnail for one photo.

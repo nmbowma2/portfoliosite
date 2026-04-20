@@ -1,23 +1,6 @@
 ---
-import { readdirSync } from "node:fs";
-import { join, extname, basename } from "node:path";
 import cuttingmatSrc from "../assets/photos/cuttingmat.png";
-
-// Discover photos at build time — no more 50 blind JS probes
-const fotosDir = join(process.cwd(), "public/fotos");
-const photoExts = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif"]);
-const photoFiles = readdirSync(fotosDir)
-  .filter(f => photoExts.has(extname(f).toLowerCase()))
-  .sort((a, b) => {
-    const numA = parseInt(a.match(/\d+/)?.[0] ?? "0");
-    const numB = parseInt(b.match(/\d+/)?.[0] ?? "0");
-    return numA - numB;
-  })
-  .map(filename => ({
-    full: `/fotos/${filename}`,
-    // make-thumbs.mjs always outputs .jpg regardless of source extension
-    thumb: `/fotos/thumbs/${basename(filename, extname(filename))}.jpg`,
-  }));
+import photoFiles from "../data/photos-manifest.json";
 ---
 
 <html lang="en">
