@@ -125,13 +125,28 @@ const CONFIG = {
   const isMobile = /Mobi|Android/i.test(navigator.userAgent);
   let ghostActive = false;
   let isTouching = false;
-  let ghostT = Math.random() * Math.PI * 2; // random start phase
-  const ghostSpeed = 0.0013;                // rad/ms — ~4.8s full cycle, visibly fluid
-  const phi = (1 + Math.sqrt(5)) / 2;       // ≈1.618 — irrational, keeps path non-repeating
+  let ghostT = Math.random() * Math.PI * 2;
+  let ghostSpeed = 0.0013;             // rad/ms; ramps with each new touch
+  const ghostSpeedMax  = 0.003;
+  const ghostSpeedStep = 0.0005;
+  const phi = (1 + Math.sqrt(5)) / 2; // ≈1.618 — irrational, keeps path non-repeating
 
   function setTargetFromEvent(e){ state.tx = e.offsetX * dpr; state.ty = e.offsetY * dpr; }
   function armAnimation(){ if (animating) return; animating = true; rafId = requestAnimationFrame((t)=>draw(t)); }
   function stopAnimation(){ animating = false; if (rafId){ cancelAnimationFrame(rafId); rafId = 0; } }
+
+  // Anchor the ghost at a new canvas position, pick a fresh Lissajous phase,
+  // and nudge the speed up. Called on first touch and every subsequent finger.
+  function restartGhost(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    state.tx = (clientX - rect.left) * dpr;
+    state.ty = (clientY - rect.top)  * dpr;
+    ghostT    = Math.random() * Math.PI * 2;
+    ghostSpeed = Math.min(ghostSpeedMax, ghostSpeed + ghostSpeedStep);
+    ghostActive  = true;
+    chromaArmed  = true;
+    armAnimation();
+  }
 
   canvas.addEventListener('pointermove', (e) => {
     if (!isMobile || isTouching) setTargetFromEvent(e);
@@ -140,17 +155,25 @@ const CONFIG = {
   }, { passive: true });
 
   canvas.addEventListener('pointerdown', (e) => {
-    setTargetFromEvent(e);
-    chromaArmed = true;
     isTouching = true;
-    if (isMobile && !ghostActive) ghostActive = true;
-    armAnimation();
+    if (isMobile) {
+      restartGhost(e.clientX, e.clientY);
+    } else {
+      setTargetFromEvent(e);
+      chromaArmed = true;
+      armAnimation();
+    }
   }, { passive: true });
+
+  // 2nd / 3rd / 4th finger: re-anchor ghost at the new touch point
+  if (isMobile) {
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length >= 2) restartGhost(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+    }, { passive: true });
+  }
 
   function onTouchEnd() {
     isTouching = false;
-    // Re-arm the loop in case a micro-scroll caused the IntersectionObserver
-    // to call stopAnimation() during the touch sequence.
     if (ghostActive) armAnimation();
   }
   canvas.addEventListener('pointerup',     onTouchEnd, { passive: true });
@@ -199,7 +222,7 @@ const CONFIG = {
       state.ty = H * 0.5 + H * 0.32 * Math.sin(ghostT * phi);
     }
 
-    const ease = 0.18 * (dt / 16.67);
+    const ease = 0.25 * (dt / 16.67);
     state.px += (state.tx - state.px) * ease;
     state.py += (state.ty - state.py) * ease;
 
