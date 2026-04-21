@@ -126,7 +126,7 @@ const CONFIG = {
   let ghostActive = false;
   let isTouching = false;
   let ghostT = Math.random() * Math.PI * 2; // random start phase
-  const ghostSpeed = 0.00042;               // rad/ms
+  const ghostSpeed = 0.0013;                // rad/ms — ~4.8s full cycle, visibly fluid
   const phi = (1 + Math.sqrt(5)) / 2;       // ≈1.618 — irrational, keeps path non-repeating
 
   function setTargetFromEvent(e){ state.tx = e.offsetX * dpr; state.ty = e.offsetY * dpr; }
@@ -147,8 +147,14 @@ const CONFIG = {
     armAnimation();
   }, { passive: true });
 
-  canvas.addEventListener('pointerup',     () => { isTouching = false; }, { passive: true });
-  canvas.addEventListener('pointercancel', () => { isTouching = false; }, { passive: true });
+  function onTouchEnd() {
+    isTouching = false;
+    // Re-arm the loop in case a micro-scroll caused the IntersectionObserver
+    // to call stopAnimation() during the touch sequence.
+    if (ghostActive) armAnimation();
+  }
+  canvas.addEventListener('pointerup',     onTouchEnd, { passive: true });
+  canvas.addEventListener('pointercancel', onTouchEnd, { passive: true });
 
   function rebuildGrid(){
     const rect = canvas.getBoundingClientRect();
