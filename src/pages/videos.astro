@@ -95,6 +95,10 @@ import ReturnLink from "../components/ReturnLink.astro";
                 grid-column: 8 / span 6;
                 grid-row: 16 / span 6;
             }
+            .media-embed:nth-child(7) {
+                grid-column: 3 / span 6;
+                grid-row: 28 / span 6;
+            }
         }
 
         /* Desktop - Random scattered grid */
@@ -131,6 +135,10 @@ import ReturnLink from "../components/ReturnLink.astro";
                 grid-column: 7 / span 2;
                 grid-row: 3 / span 2;
             }
+            .media-embed:nth-child(7) {
+                grid-column: 3 / span 2;
+                grid-row: 5 / span 2;
+            }
         }
 
         /* Large Desktop - Even more scattered */
@@ -166,6 +174,10 @@ import ReturnLink from "../components/ReturnLink.astro";
             .media-embed:nth-child(6) {
                 grid-column: 10 / span 3;
                 grid-row: 5 / span 3;
+            }
+            .media-embed:nth-child(7) {
+                grid-column: 7 / span 3;
+                grid-row: 1 / span 2;
             }
         }
 
@@ -243,6 +255,15 @@ import ReturnLink from "../components/ReturnLink.astro";
                 src="/imagenotfound.jpeg"
                 alt="Sample Image 2"
                 loading="lazy">
+        </div>
+
+        <div class="media-embed">
+            <iframe
+                src="https://www.youtube.com/embed/OmEPQyUSep4"
+                title="YouTube video 7"
+                allowfullscreen
+                loading="lazy">
+            </iframe>
         </div>
     </div>
 
